@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>畅想结算数据分析仪表板 (Excel 支持版)</title>
+    <!-- CSS Dependencies -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-dark: #020617;
+            --bg-obsidian: #0f172a;
+            --bg-accent: #1e293b;
+            --primary: #f97316;
+            --primary-glow: rgba(249, 115, 22, 0.4);
+            --secondary: #22d3ee;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-bright: rgba(255, 255, 255, 0.15);
+            --glass-bg: rgba(15, 23, 42, 0.6);
+            --glass-blur: blur(12px);
+            --radius-sm: 0.5rem;
+            --radius-md: 0.75rem;
+            --radius-lg: 1.25rem;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+            --shadow-glow: 0 0 20px -5px var(--primary-glow);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            background: 
+                radial-gradient(circle at 0% 0%, rgba(249, 115, 22, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+                var(--bg-dark);
+        }
+
+        .dashboard-container { min-height: 100vh; }
+
+        .dashboard-header {
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tab-switcher {
+            display: flex;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 4px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            gap: 2px;
+        }
+
+        .period-selector {
+            border: none;
+            background: transparent;
+            padding: 6px 12px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            outline: none;
+            border-radius: 6px;
+        }
+
+        .tab-switcher button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .tab-switcher button.active {
+            background: var(--bg-accent);
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .upload-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.25rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .dashboard-main {
+            max-width: 1600px;
+            margin: 1.5rem auto;
+            padding: 0 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .insights-panel {
+            background: linear-gradient(to right, rgba(251, 146, 60, 0.1), transparent);
+            border: 1px solid rgba(251, 146, 60, 0.2);
+            border-left: 4px solid var(--primary);
+            padding: 1.25rem 1.75rem;
+            border-radius: var(--radius-lg);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .stat-card {
+            background: var(--bg-obsidian);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-bright);
+            background: var(--bg-accent);
+        }
+
+        .stat-icon {
+            background: rgba(249, 115, 22, 0.1);
+            color: var(--primary);
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .content-card {
+            background: var(--bg-obsidian);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-selector {
+            display: flex;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 3px;
+            border-radius: 8px;
+        }
+
+        .metric-selector button {
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .metric-selector button.active {
+            background: var(--bg-accent);
+            color: var(--primary);
+        }
+
+        .chart-container { padding: 1.5rem; }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Initial Upload Screen */
+        .upload-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-dark);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .upload-box {
+            max-width: 500px;
+            width: 100%;
+            padding: 3rem;
+            border: 2px dashed var(--border-bright);
+            border-radius: var(--radius-lg);
+            background: var(--bg-obsidian);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-box:hover {
+            border-color: var(--primary);
+            background: var(--bg-accent);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- JS Dependencies -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/lodash@4.17.21/lodash.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        const Icons = {
+            Users: ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            Layers: ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>,
+            TrendingUp: ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+            DollarSign: ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+            Truck: ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+            BarChart3: ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>,
+            FileSpreadsheet: ({ size = 32, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/><path d="M8 9h2"/><path d="M14 9h2"/></svg>,
+            Sparkles: ({ size = 18, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>,
+            Percent: ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>,
+            X: ({ size = 20, className = "" }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        };
+
+        const Chart = ({ option, style, onEvents }) => {
+            const chartRef = React.useRef(null);
+            const instanceRef = React.useRef(null);
+
+            React.useEffect(() => {
+                if (!instanceRef.current) {
+                    instanceRef.current = echarts.init(chartRef.current);
+                }
+                instanceRef.current.setOption(option);
+                
+                if (onEvents) {
+                    Object.keys(onEvents).forEach(event => {
+                        instanceRef.current.off(event);
+                        instanceRef.current.on(event, onEvents[event]);
+                    });
+                }
+            }, [option, onEvents]);
+
+            React.useEffect(() => {
+                const handleResize = () => instanceRef.current?.resize();
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
+            }, []);
+
+            return <div ref={chartRef} style={style} />;
+        };
+
+        const round = (n) => Math.round(n * 100) / 100;
+
+        const createBreakdown = (items, dimension) => {
+            return Object.entries(_.groupBy(items, dimension)).map(([name, group]) => {
+                const c_rev_usd = group.reduce((s, i) => s + i.revenue_usd, 0);
+                const c_rev_rmb_net = group.reduce((s, i) => s + i.revenue_rmb, 0);
+                const c_rev_rmb_gross = group.reduce((s, i) => s + i.revenue_usd * i.rate, 0);
+                const c_gp = group.reduce((s, i) => s + i.gross_profit, 0);
+                const c_shipping = group.reduce((s, i) => s + i.shipping_cost, 0);
+                return {
+                    [dimension]: name,
+                    '应收货款_USD': round(c_rev_usd),
+                    '毛利': round(c_gp),
+                    '毛利率': c_rev_rmb_net === 0 ? 0 : round((c_gp / c_rev_rmb_net) * 100),
+                    '出运包干费率': c_rev_rmb_gross === 0 ? 0 : round((c_shipping / c_rev_rmb_gross) * 100)
+                };
+            });
+        };
+
+        const processGroup = (groupData) => {
+            const rev_usd = round(groupData.reduce((s, r) => s + r.revenue_usd, 0));
+            const rev_usd_net = round(groupData.reduce((s, r) => s + r.revenue_usd_net, 0));
+            const rev_rmb_gross = round(groupData.reduce((s, r) => s + r.revenue_usd * r.rate, 0));
+            const rev_rmb_net = round(groupData.reduce((s, r) => s + r.revenue_rmb, 0));
+            const gp = round(groupData.reduce((s, r) => s + r.gross_profit, 0));
+            
+            const summary = {
+                Revenue_USD: rev_usd,
+                Revenue_USD_Net: rev_usd_net,
+                Revenue_RMB: rev_rmb_net,
+                Original_Revenue_RMB: rev_rmb_gross,
+                GrossProfit: gp,
+                Costs: {
+                    shipping: round(groupData.reduce((s, r) => s + r.shipping_cost, 0)),
+                    xinbao: round(groupData.reduce((s, r) => s + r.costs.Xinbao_USD, 0)),
+                    bank: round(groupData.reduce((s, r) => s + r.costs.Bank_USD, 0)),
+                    comm: round(groupData.reduce((s, r) => s + r.costs.Comm_USD, 0)),
+                    tax_refund: round(groupData.reduce((s, r) => s + r.costs['减：退税额'], 0)),
+                    purchase: round(groupData.reduce((s, r) => s + r.costs['采购金额（含税销售）'], 0))
+                }
+            };
+
+            return { 
+                groupRows: groupData,
+                overall_summary: summary, 
+                by_customer: createBreakdown(groupData, 'customer'),
+                by_category: createBreakdown(groupData, 'category'),
+                by_market: createBreakdown(groupData, 'market')
+            };
+        };
+
+        const processExcelData = (rows) => {
+            const cleanNum = (val) => {
+                if (typeof val === 'number') return val;
+                if (!val) return 0;
+                return Number(String(val).replace(/,/g, '')) || 0;
+            };
+
+            const mapKeys = (item) => {
+                const keys = Object.keys(item).map(k => k.trim());
+                const rawItem = {};
+                Object.keys(item).forEach(k => rawItem[k.trim()] = item[k]);
+
+                const find = (keywords) => {
+                    // 第一遍：按关键字顺序进行精确匹配 (1st Pass: Exact Match)
+                    for (const kw of keywords) {
+                        const match = keys.find(k => k.toLowerCase() === kw.toLowerCase());
+                        if (match) return match;
+                    }
+                    // 第二遍：按关键字顺序进行模糊匹配（表头包含关键字，例如：k="2024美元销售额" kw="美元销售额"）
+                    for (const kw of keywords) {
+                        const match = keys.find(k => k.includes(kw));
+                        if (match) return match;
+                    }
+                    // 第三遍：按关键字顺序进行反向模糊匹配（关键字包含表头，例如：kw="应收货款（美元）" k="应收货款"）
+                    // 仅当表头长度 > 1 时触发，防止误中
+                    for (const kw of keywords) {
+                        const match = keys.find(k => k.length > 1 && kw.includes(k));
+                        if (match) return match;
+                    }
+                    return null;
+                };
+
+                const formatPeriod = (val) => {
+                    if (!val) return '未知';
+                    if (val instanceof Date) {
+                        return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}`;
+                    }
+                    if (typeof val === 'number') {
+                        const date = new Date(Math.round((val - 25569) * 864e5));
+                        if (!isNaN(date.getTime()) && date.getFullYear() > 2000) {
+                            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                        }
+                    }
+                    const s = String(val);
+                    if (s.includes('-')) {
+                        const parts = s.split('-');
+                        if (parts.length >= 2) return `${parts[0]}-${parts[1].padStart(2, '0')}`;
+                    }
+                    return s;
+                };
+
+                const k_period = find(['财务期间', '结算周期', '月份', '期间']);
+                const k_customer = find(['客户编号', '客户简称', '客户名称', '客户']);
+                const k_category = find(['一级目录', '品类', '分类']);
+                const k_market = find(['分公司', '市场分司', '区域', '市场']);
+                const k_rate = find(['USD汇率', '汇率']);
+                
+                const k_rev_usd = find(['销售额（美元）', '美元销售额', '应收货款（美元）', '应收货款_USD']);
+                const k_rev_rmb = find(['应收货款', '应收货款_RMB']);
+                const k_rev_net = find(['净销售额_RMB', '净销售_RMB']);
+                const k_gp = find(['毛利', 'GrossProfit']);
+                const k_ship = find(['出运包干费', '包干费']);
+                const k_purchase = find(['采购金额（含税销售）', '采购成本']);
+                const k_refund = find(['减：退税额', '退税额']);
+
+                const rev_usd = cleanNum(rawItem[k_rev_usd]);
+                const rate = cleanNum(rawItem[k_rate]) || 6.9;
+                
+                const costs = {
+                    Xinbao_USD: cleanNum(rawItem[find(['信保费用'])]),
+                    Bank_USD: cleanNum(rawItem[find(['银行费用'])]),
+                    Comm_USD: cleanNum(rawItem[find(['佣金'])]),
+                    '减：退税额': cleanNum(rawItem[k_refund]),
+                    '采购金额（含税销售）': cleanNum(rawItem[k_purchase])
+                };
+
+                const rev_usd_net = rev_usd - costs.Xinbao_USD - costs.Bank_USD - costs.Comm_USD;
+                
+                return {
+                    month: formatPeriod(rawItem[k_period]),
+                    customer: rawItem[k_customer] || '其他',
+                    category: rawItem[k_category] || '其他',
+                    market: rawItem[k_market] || '总部',
+                    rate: rate,
+                    revenue_usd: rev_usd,
+                    revenue_usd_net: rev_usd_net,
+                    revenue_rmb: cleanNum(rawItem[k_rev_net]) || (rev_usd_net * rate),
+                    gross_profit: cleanNum(rawItem[k_gp]),
+                    shipping_cost: cleanNum(rawItem[k_ship]),
+                    costs: costs
+                };
+            };
+
+            const data = rows.filter(r => Object.keys(r).length > 5).map(mapKeys).filter(r => r.month !== '未知');
+            const months = [...new Set(data.map(r => r.month))].sort();
+            const latestMonth = months[months.length - 1];
+
+            const monthly_details = {};
+            months.forEach(m => {
+                monthly_details[m] = processGroup(data.filter(r => r.month === m));
+            });
+
+            return {
+                months,
+                latestMonth,
+                overall_total: processGroup(data),
+                monthly_details,
+                trends: months.map(m => {
+                    const monthData = data.filter(r => r.month === m);
+                    const rev = monthData.reduce((s, r) => s + r.revenue_usd, 0);
+                    const gp = monthData.reduce((s, r) => s + r.gross_profit, 0);
+                    const rev_gross = monthData.reduce((s, r) => s + r.revenue_usd * r.rate, 0);
+                    return {
+                        month: m,
+                        revenue: rev,
+                        margin: rev_gross === 0 ? 0 : (gp / rev_gross * 100)
+                    };
+                })
+            };
+        };
+
+        window.onerror = function(msg, url, line, col, error) {
+            const errDiv = document.createElement('div');
+            errDiv.style.position = 'fixed';
+            errDiv.style.top = '0';
+            errDiv.style.left = '0';
+            errDiv.style.width = '100%';
+            errDiv.style.background = 'red';
+            errDiv.style.color = 'white';
+            errDiv.style.zIndex = '9999';
+            errDiv.style.padding = '20px';
+            errDiv.innerHTML = `<h3>Runtime Error:</h3><p>${msg}</p><p>at ${line}:${col}</p><pre>${error ? error.stack : ''}</pre>`;
+            document.body.appendChild(errDiv);
+            return false;
+        };
+
+        const App = () => {
+            const [data, setData] = useState(null);
+            
+            // Debug: expose setData to window
+            React.useEffect(() => {
+                window.setDashboardData = setData;
+            }, []);
+
+            const [selectedPeriod, setSelectedPeriod] = React.useState('all');
+            const [activeTab, setActiveTab] = useState('customer');
+            const [metric, setMetric] = useState('应收货款_USD');
+            const [marketMetric, setMarketMetric] = useState('Revenue');
+            const [selectedItem, setSelectedItem] = useState(null);
+            
+            const [isDragging, setIsDragging] = useState(false);
+
+            const handleDrag = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.type === 'dragover' || e.type === 'dragenter') setIsDragging(true);
+                else setIsDragging(false);
+            };
+
+            const handleDrop = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragging(false);
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            };
+
+            const handleFile = (file) => {
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const dataArray = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(dataArray, { type: 'array', cellDates: true });
+                        const firstSheet = workbook.SheetNames[0];
+                        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], { defval: "" });
+                        
+                        if (rows.length === 0) {
+                            alert('Excel 文件是空的');
+                            return;
+                        }
+
+                        const processed = processExcelData(rows);
+                        setData(processed);
+                    } catch (err) {
+                        alert('文件解析失败: ' + err.message);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            };
+
+            const activeData = useMemo(() => {
+                if (!data) return null;
+                return selectedPeriod === 'all' ? data.overall_total : data.monthly_details[selectedPeriod];
+            }, [data, selectedPeriod]);
+
+            const currentSummary = useMemo(() => {
+                if (!activeData) return null;
+                if (!selectedItem) return activeData.overall_summary;
+                const filtered = activeData.groupRows.filter(r => 
+                    r.customer === selectedItem || r.category === selectedItem || r.market === selectedItem
+                );
+                return filtered.length > 0 ? processGroup(filtered).overall_summary : activeData.overall_summary;
+            }, [activeData, selectedItem]);
+
+            const trendOption = useMemo(() => {
+                if (!data) return {};
+                return {
+                    tooltip: { 
+                        trigger: 'axis', 
+                        axisPointer: { type: 'shadow' },
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        textStyle: { color: '#f8fafc' },
+                        formatter: (params) => {
+                            let res = `<div style="font-weight:bold;margin-bottom:4px;">${params[0].name}</div>`;
+                            params.forEach(p => {
+                                const val = p.value;
+                                const formatted = p.seriesName === '销售额' 
+                                    ? `$${Number(val).toLocaleString(undefined, {minimumFractionDigits: 2})}`
+                                    : `${Number(val).toFixed(2)}%`;
+                                res += `<div style="display:flex;justify-content:space-between;gap:12px;">
+                                    <span>${p.marker} ${p.seriesName}</span>
+                                    <span style="font-weight:bold;">${formatted}</span>
+                                </div>`;
+                            });
+                            return res;
+                        }
+                    },
+                    legend: { data: ['销售额', '毛利率'], textStyle: { color: '#94a3b8' }, top: 0 },
+                    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                    xAxis: { type: 'category', data: data.trends.map(t => t.month), axisLabel: { color: '#94a3b8' } },
+                    yAxis: [
+                        { type: 'value', name: '销售额', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { formatter: '${value}', color: '#94a3b8' } },
+                        { type: 'value', name: '毛利率', position: 'right', axisLabel: { formatter: '{value}%', color: '#94a3b8' }, splitLine: { show: false } }
+                    ],
+                    series: [
+                        { name: '销售额', type: 'bar', data: data.trends.map(t => t.revenue), itemStyle: { color: '#f97316', borderRadius: [4, 4, 0, 0] } },
+                        { name: '毛利率', type: 'line', yAxisIndex: 1, data: data.trends.map(t => t.margin.toFixed(2)), symbol: 'circle', symbolSize: 8, itemStyle: { color: '#22d3ee' }, lineStyle: { width: 3 } }
+                    ]
+                };
+            }, [data]);
+
+            const pieOption = useMemo(() => {
+                if (!activeData) return {};
+                const raw = activeData.by_market;
+                const pieData = raw.map(i => ({
+                    name: i.market,
+                    value: marketMetric === 'Revenue' ? i['应收货款_USD'] : i['毛利']
+                })).sort((a,b) => b.value - a.value);
+
+                return {
+                    tooltip: { 
+                        trigger: 'item',
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        textStyle: { color: '#f8fafc' },
+                        formatter: (params) => {
+                            const symbol = marketMetric === 'Revenue' ? '$' : '¥';
+                            return `${params.name}<br/>${params.marker}${marketMetric === 'Revenue' ? '销售额' : '毛利'}: <b>${symbol}${params.value.toLocaleString(undefined, {minimumFractionDigits: 2})}</b> (${params.percent}%)`;
+                        }
+                    },
+                    legend: { orient: 'vertical', left: 'left', textStyle: { color: '#94a3b8' }, bottom: 0 },
+                    series: [{
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: { borderRadius: 10, borderColor: '#0f172a', borderWidth: 2 },
+                        label: { show: false, position: 'center' },
+                        emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold', color: '#fff' } },
+                        labelLine: { show: false },
+                        data: pieData,
+                        color: ['#f97316', '#22d3ee', '#6366f1', '#10b981', '#f43f5e', '#eab308']
+                    }]
+                };
+            }, [activeData, marketMetric]);
+
+            const barOption = useMemo(() => {
+                if (!activeData) return {};
+                const raw = activeTab === 'customer' ? activeData.by_customer : (activeTab === 'category' ? activeData.by_category : activeData.by_market);
+                const labelKey = activeTab === 'customer' ? 'customer' : (activeTab === 'category' ? 'category' : 'market');
+                const sorted = [...raw].sort((a, b) => b[metric] - a[metric]).slice(0, 10).reverse();
+
+                return {
+                    tooltip: { 
+                        trigger: 'axis', 
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)', 
+                        textStyle: {color: '#fff'},
+                        formatter: (params) => {
+                            const p = params[0];
+                            const val = p.value;
+                            let formatted = val;
+                            if (metric === '应收货款_USD') formatted = `$${val.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                            else if (metric === '毛利') formatted = `¥${val.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                            else formatted = `${val}%`;
+                            const metricLabel = metric === '应收货款_USD' ? '销售额' : (metric === '毛利' ? '毛利额' : metric);
+                            return `${p.name}<br/>${p.marker}${metricLabel}: <b>${formatted}</b>`;
+                        }
+                    },
+                    grid: { left: 100, right: 40, top: 20, bottom: 20 },
+                    xAxis: { 
+                        type: 'value', 
+                        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, 
+                        axisLabel: { 
+                            formatter: (val) => {
+                                if (metric === '应收货款_USD') return `$${val}`;
+                                if (metric === '毛利') return `¥${val}`;
+                                return `${val}%`;
+                            },
+                            color: '#94a3b8' 
+                        } 
+                    },
+                    yAxis: { type: 'category', data: sorted.map(i => i[labelKey]), axisLabel: { color: '#94a3b8', width: 90, overflow: 'truncate' } },
+                    series: [{ 
+                        type: 'bar', 
+                        data: sorted.map(i => (metric === '毛利率' || metric === '出运包干费率') ? (i[metric] * 100).toFixed(2) : i[metric]), 
+                        itemStyle: { 
+                            color: params => params.data > 0 ? '#f97316' : '#f43f5e',
+                            borderRadius: [0, 4, 4, 0] 
+                        } 
+                    }]
+                };
+            }, [activeTab, activeData, metric]);
+
+            const sankeyOption = useMemo(() => {
+                if (!activeData || !currentSummary) return {};
+                let displaySummary = currentSummary;
+                
+                const s = displaySummary;
+                const c = s.Costs;
+
+                const nodes = [
+                    { name: '销售额 (美元)', itemStyle: { color: '#6366f1' } },
+                    { name: '净销售额 (美元)', itemStyle: { color: '#8b5cf6' } },
+                    { name: '银行费用', itemStyle: { color: '#ef4444' } },
+                    { name: '信保费用', itemStyle: { color: '#f43f5e' } },
+                    { name: '中海佣金', itemStyle: { color: '#fb7185' } },
+                    { name: '净销售额 (人民币)', itemStyle: { color: '#a855f7' } },
+                    { name: '总成本', itemStyle: { color: '#94a3b8' } },
+                    { name: '本单毛利', itemStyle: { color: '#10b981' } },
+                    { name: '采购成本', itemStyle: { color: '#f59e0b' } },
+                    { name: '物流成本', itemStyle: { color: '#3b82f6' } },
+                    { name: '其他支出', itemStyle: { color: '#64748b' } }
+                ];
+
+                const links = [
+                    { source: '销售额 (美元)', target: '净销售额 (美元)', value: s.Revenue_USD_Net },
+                    { source: '销售额 (美元)', target: '银行费用', value: c.bank },
+                    { source: '销售额 (美元)', target: '信保费用', value: c.xinbao },
+                    { source: '销售额 (美元)', target: '中海佣金', value: c.comm },
+                    { source: '净销售额 (美元)', target: '净销售额 (人民币)', value: s.Revenue_RMB },
+                    { source: '净销售额 (人民币)', target: '总成本', value: (c.purchase + c.shipping + Math.max(0, s.Revenue_RMB - s.GrossProfit - c.purchase - c.shipping)) },
+                    { source: '净销售额 (人民币)', target: '本单毛利', value: Math.max(0, s.GrossProfit) },
+                    { source: '总成本', target: '采购成本', value: Math.max(0, c.purchase - c.tax_refund) },
+                    { source: '总成本', target: '物流成本', value: c.shipping },
+                    { source: '总成本', target: '其他支出', value: Math.max(0, s.Revenue_RMB - s.GrossProfit - c.purchase - c.shipping) }
+                ].filter(l => l.value > 0);
+
+                return {
+                    tooltip: { 
+                        trigger: 'item', 
+                        triggerOn: 'mousemove', 
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        textStyle: { color: '#fff' },
+                        formatter: (params) => {
+                            const val = params.value;
+                            const isNode = !params.data.source;
+                            let formatted = val;
+                            if (params.name.includes('美元')) formatted = `$${val.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                            else formatted = `¥${val.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                            
+                            let res = `${params.name}: <b>${formatted}</b>`;
+                            
+                            // For terminal nodes, add percentage of net revenue
+                            const terminalNodes = ['采购成本', '物流成本', '其他支出', '本单毛利'];
+                            if (isNode && terminalNodes.includes(params.name) && s.Revenue_RMB > 0) {
+                                const pct = (val / s.Revenue_RMB) * 100;
+                                res += `<br/><span style="color:#94a3b8;font-size:11px;">占净额比: ${pct.toFixed(2)}%</span>`;
+                                
+                                if (params.name === '物流成本' && s.Original_Revenue_RMB > 0) {
+                                    const grossPct = (val / s.Original_Revenue_RMB) * 100;
+                                    res += `<br/><span style="color:#f97316;font-size:11px;">(即表头包干费率: ${grossPct.toFixed(2)}%)</span>`;
+                                }
+                            }
+                            return res;
+                        }
+                    },
+                    series: [{
+                        type: 'sankey',
+                        emphasis: { focus: 'adjacency' },
+                        nodeAlign: 'justify',
+                        data: nodes,
+                        links: links,
+                        lineStyle: { color: 'gradient', curveness: 0.5 },
+                        label: { position: 'right', color: '#cbd5e1', fontSize: 10 }
+                    }]
+                };
+            }, [activeData, selectedItem, currentSummary]);
+
+            if (!data) {
+                return (
+                    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 p-6 text-center">
+                        <div className="mb-10 text-center">
+                            <h2 className="text-5xl font-black mb-6 bg-gradient-to-r from-orange-400 to-amber-200 bg-clip-text text-transparent italic">Settlement Intelligence</h2>
+                            <p className="text-slate-500 max-w-md mx-auto text-lg leading-relaxed">上传结算月报 Excel，即刻生成交互式黑金仪表板。支持多月份自动合并与下钻分析。</p>
+                        </div>
+                        <label 
+                            className={`group relative w-full max-w-2xl aspect-[2/1] border-2 border-dashed rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all duration-500 overflow-hidden shadow-2xl ${isDragging ? 'border-orange-500 bg-orange-500/10 scale-105' : 'bg-slate-900/50 border-slate-800 hover:border-orange-500/50 hover:bg-slate-900/80'}`}
+                            onDragOver={handleDrag}
+                            onDragEnter={handleDrag}
+                            onDragLeave={handleDrag}
+                            onDrop={handleDrop}
+                        >
+                            <input type="file" hidden accept=".xlsx,.xls,.csv" onChange={e => handleFile(e.target.files[0])} />
+                            <div className="flex flex-col items-center gap-6 group-hover:scale-110 transition-transform duration-500">
+                                <div className={`p-6 rounded-2xl transition-colors ${isDragging ? 'bg-orange-500 text-white' : 'bg-slate-800 group-hover:bg-orange-500/20'}`}>
+                                    <Icons.FileSpreadsheet />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-2xl font-bold text-slate-200">{isDragging ? '松开即刻上传解析' : '将 Excel 拖拽至此处'}</p>
+                                    <p className="text-slate-500">支持 .xlsx, .xls, .csv 格式</p>
+                                </div>
+                            </div>
+                        </label>
+                        <div className="mt-12 flex items-center gap-12 grayscale opacity-40">
+                             <span className="text-sm font-bold tracking-tighter">DATA SECURITY FIRST</span>
+                             <span className="text-sm font-bold tracking-tighter">OFFLINE ANALYTICS</span>
+                             <span className="text-sm font-bold tracking-tighter">EXCEL COMPATIBLE</span>
+                        </div>
+                    </div>
+                );
+            }
+
+            const stats = [
+                { label: '销售额 (USD)', value: currentSummary.Revenue_USD, unit: '$', icon: <Icons.DollarSign className="text-blue-400" /> },
+                { label: '毛利额 (RMB)', value: currentSummary.GrossProfit, unit: '¥', icon: <Icons.TrendingUp className="text-emerald-400" /> },
+                { label: '综合毛利率', value: (currentSummary.Revenue_USD > 0 ? (currentSummary.GrossProfit / (currentSummary.Revenue_USD * 7)) * 100 : 0), unit: '%', icon: <Icons.Percent className="text-orange-400" /> },
+                { label: '包干费率', value: (currentSummary.Original_Revenue_RMB > 0 ? (currentSummary.Costs.shipping / currentSummary.Original_Revenue_RMB) * 100 : 0), unit: '%', icon: <Icons.Truck className="text-indigo-400" /> }
+            ];
+
+
+            return (
+                <div className="dashboard-container">
+                    <header className="dashboard-header">
+                        <div className="header-content">
+                            <div className="logo cursor-pointer" onClick={() => { setData(null); setSelectedItem(null); }}>
+                                <Icons.Sparkles className="text-orange-500" />
+                                <h1>畅想结算分析 <span className="text-sm font-normal text-slate-500 ml-4 italic">{selectedPeriod === 'all' ? '季度汇总统计' : selectedPeriod + ' 结算分析'}</span></h1>
+                            </div>
+                            
+                            <div className="flex items-center gap-6">
+                                {selectedItem && (
+                                    <div className="flex items-center gap-2 px-3 py-1 bg-orange-500/20 border border-orange-500/30 rounded-full text-orange-400 text-xs transition-all animate-pulse">
+                                        <span>下钻: {selectedItem}</span>
+                                        <button onClick={() => setSelectedItem(null)}><Icons.X size={14} /></button>
+                                    </div>
+                                )}
+                                <div className="tab-switcher">
+                                    <select className="period-selector" value={selectedPeriod} onChange={(e) => { setSelectedPeriod(e.target.value); setSelectedItem(null); }}>
+                                        <option value="all">Q1 季度汇总汇算</option>
+                                        {data.months.map(m => ( <option key={m} value={m}>{m} 周期</option> ))}
+                                    </select>
+                                </div>
+
+                                <div className="tab-switcher">
+                                    <button className={activeTab === 'customer' ? 'active' : ''} onClick={() => { setActiveTab('customer'); setSelectedItem(null); }}>客户维度</button>
+                                    <button className={activeTab === 'category' ? 'active' : ''} onClick={() => { setActiveTab('category'); setSelectedItem(null); }}>品类维度</button>
+                                    <button className={activeTab === 'market' ? 'active' : ''} onClick={() => { setActiveTab('market'); setSelectedItem(null); }}>市场维度</button>
+                                </div>
+
+                                <button className="upload-btn" onClick={() => { setData(null); setSelectedItem(null); }}>
+                                    重新上传
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="dashboard-main">
+                        <div className="content-card insights-panel">
+                            <div className="flex items-center gap-2 mb-2 text-orange-400 font-bold">
+                                <Icons.Sparkles size={18} />
+                                <span>AI 经营智能诊断汇报</span>
+                            </div>
+                            <div className="text-sm text-slate-400 leading-relaxed space-y-2">
+                                <p>
+                                    基于 <strong>{selectedPeriod === 'all' ? '季度汇总' : selectedPeriod}</strong> {selectedItem ? `中「${selectedItem}」` : ''} 的结算数据，系统显示目前的业务毛利结构如下：
+                                </p>
+                                <p>
+                                    1. <strong>盈利质量</strong>：当前综合毛利率为 <strong>{stats[2].value.toFixed(2)}%</strong>。
+                                    {stats[2].value >= 12 
+                                        ? ' 表现优于 12% 的基准预期，盈利质量健康。' 
+                                        : (stats[2].value >= 10 
+                                            ? ' 接近 12% 的基准线，表现基本达标。' 
+                                            : ' 低于 12% 的预设基准，需关注核心业务的价格竞争与采购成本。')}
+                                </p>
+                                <p>
+                                    2. <strong>成本管控</strong>：物流及包干费率目前为 <strong>{stats[3].value.toFixed(2)}%</strong>。
+                                    {stats[3].value <= 4 
+                                        ? ' 维持在 4% 控制线以内，成本管控效果良好。' 
+                                        : ` 已超出 4% 的控制预警线（超额 ${ (stats[3].value - 4).toFixed(2) }%），建议核查单票物流明细。`}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="stats-grid">
+                            {stats.map((stat, i) => (
+                                <div key={i} className="stat-card">
+                                    <div className="stat-icon">{stat.icon}</div>
+                                    <div className="stat-info">
+                                        <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">{stat.label}</p>
+                                        <p className="stat-value">
+                                            {stat.unit === '¥' || stat.unit === '$' ? <span className="text-sm text-slate-600 mr-1">{stat.unit}</span> : ''}
+                                            {stat.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            {stat.unit === '%' ? <span className="text-sm text-slate-600 ml-1">{stat.unit}</span> : ''}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="dashboard-grid">
+                            <div className="content-card">
+                                <div className="card-header">
+                                    <h3><Icons.TrendingUp size={18} className="text-orange-500" /> 月度数据趋势对比</h3>
+                                </div>
+                                <div className="chart-container">
+                                    <Chart option={trendOption} style={{ height: '350px' }} 
+                                           onEvents={{ 'click': (p) => { if (p && p.name && data.months.includes(p.name)) setSelectedPeriod(p.name); } }} />
+                                </div>
+                            </div>
+                            
+                            <div className="content-card">
+                                <div className="card-header">
+                                    <h3>分公司业务权重占比</h3>
+                                    <div className="metric-selector">
+                                        {(['Revenue', 'Profit']).map(m => (
+                                            <button key={m} className={marketMetric === m ? 'active' : ''} onClick={() => setMarketMetric(m)}>
+                                                {m === 'Revenue' ? '销售' : '毛利'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="chart-container">
+                                    <Chart option={pieOption} style={{ height: '350px' }} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="dashboard-grid">
+                            <div className="content-card">
+                                <div className="card-header">
+                                    <h3>Top 10 {activeTab === 'customer' ? '客户' : (activeTab === 'category' ? '品类' : '分公司')}表现</h3>
+                                    <div className="metric-selector">
+                                        {(['应收货款_USD', '毛利']).map(m => (
+                                            <button key={m} className={metric === m ? 'active' : ''} onClick={() => setMetric(m)}>
+                                                {m === '应收货款_USD' ? '销售额' : '毛利额'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="chart-container">
+                                    <Chart option={barOption} style={{ height: '400px' }} 
+                                           onEvents={{ 'click': (p) => { if (p && p.name) setSelectedItem(p.name); } }} />
+                                </div>
+                            </div>
+
+                            <div className="content-card">
+                                <div className="card-header">
+                                    <h3>利润构成拆解 (Sankey Flow Diagram)</h3>
+                                </div>
+                                <div className="chart-container">
+                                    <Chart option={sankeyOption} style={{ height: '400px' }} />
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月度销售额及毛利率趋势对比</title>
+    <!-- 使用本地下载好的 ECharts 库，实现 100% 离线无网运行 -->
+    <script src="echarts.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft YaHei", sans-serif;
+            background-color: #0b0f19;
+            color: #f8fafc;
+            overflow: hidden;
+            margin: 0;
+            padding: 24px;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            flex: none;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .icon-container {
+            padding: 8px;
+            background-color: rgba(249, 115, 22, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .icon-svg {
+            color: #f97316;
+            width: 24px;
+            height: 24px;
+        }
+        .title-text {
+            font-size: 20px;
+            font-weight: bold;
+            background: linear-gradient(to right, #fb923c, #fde047);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+        }
+        .sub-title {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 2px;
+            margin-bottom: 0;
+        }
+        .filter-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: rgba(15, 23, 42, 0.6);
+            padding: 6px 12px;
+            border-radius: 12px;
+            border: 1px solid #1e293b;
+        }
+        .filter-label {
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        .select-custom {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            font-size: 12px;
+            border-radius: 8px;
+            padding: 4px 24px 4px 10px;
+            color: #e2e8f0;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            background-image: url("data:image/svg+xml;utf8,<svg fill='%2394a3b8' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
+            background-position: right 6px center;
+            background-repeat: no-repeat;
+            appearance: none;
+        }
+        .select-custom:focus {
+            border-color: #f97316;
+        }
+        .chart-wrapper {
+            flex: 1;
+            width: 100%;
+            background-color: rgba(15, 23, 42, 0.2);
+            border: 1px solid rgba(30, 41, 59, 0.8);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            position: relative;
+            box-sizing: border-box;
+        }
+        .chart-dom {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部控制栏 -->
+    <div class="header">
+        <div class="header-left">
+            <div class="icon-container">
+                <svg class="icon-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <div>
+                <h1 class="title-text">月度销售额及毛利率趋势对比</h1>
+                <p class="sub-title">月度新接订单规模 (USD) 与实际出运毛利率 (%) 趋势关系图</p>
+            </div>
+        </div>
+        
+        <!-- 分公司筛选下拉菜单 -->
+        <div class="filter-container">
+            <span class="filter-label">分公司:</span>
+            <select id="branchSelector" class="select-custom">
+                <option value="all">所有分公司/整体</option>
+                <option value="市场七一司">市场七一司</option><option value="市场七三司">市场七三司</option><option value="市场七九司">市场七九司</option><option value="市场七二司">市场七二司</option><option value="市场七八司">市场七八司</option><option value="市场七六司">市场七六司</option><option value="市场八十司">市场八十司</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 图表容器 -->
+    <div class="chart-wrapper">
+        <div id="chartDom" class="chart-dom"></div>
+    </div>
+
+    <!-- 嵌入的数据集 -->
+    <script>
+        const chartData = {"all": [{"month": "2026-01", "revenue": 133090.55, "margin": 11.73, "shipRatio": 8.9}, {"month": "2026-02", "revenue": 132814.35, "margin": 2.39, "shipRatio": 7.39}, {"month": "2026-03", "revenue": 334432.18, "margin": 3.26, "shipRatio": 6.11}, {"month": "2026-04", "revenue": 379277.16, "margin": 6.99, "shipRatio": 3.0}, {"month": "2026-05", "revenue": 174051.68, "margin": 9.36, "shipRatio": 4.49}, {"month": "2026-06", "revenue": 490030.66, "margin": 4.6, "shipRatio": 3.29}], "市场七一司": [{"month": "2026-01", "revenue": 12006.96, "margin": 1.59, "shipRatio": 11.14}, {"month": "2026-02", "revenue": 10410.96, "margin": 4.01, "shipRatio": 8.15}, {"month": "2026-03", "revenue": 9054.16, "margin": -1.59, "shipRatio": 15.56}, {"month": "2026-04", "revenue": 0.0, "margin": 0.0, "shipRatio": 0.0}, {"month": "2026-05", "revenue": 0.0, "margin": 0.0, "shipRatio": 0.0}, {"month": "2026-06", "revenue": 0.0, "margin": 0.0, "shipRatio": 0.0}], "市场七三司": [{"month": "2026-01", "revenue": 21141.0, "margin": 16.44, "shipRatio": 4.44}, {"month": "2026-02", "revenue": 37872.48, "margin": 2.51, "shipRatio": 3.35}, {"month": "2026-03", "revenue": 1250.0, "margin": -6.24, "shipRatio": 1.06}, {"month": "2026-04", "revenue": 63933.15, "margin": 6.38, "shipRatio": 3.67}, {"month": "2026-05", "revenue": 53113.3, "margin": 15.29, "shipRatio": 2.23}, {"month": "2026-06", "revenue": 31097.5, "margin": 1.96, "shipRatio": 1.95}], "市场七二司": [{"month": "2026-01", "revenue": 65667.77, "margin": 13.29, "shipRatio": 3.12}, {"month": "2026-02", "revenue": 0.0, "margin": 0.0, "shipRatio": 0.0}, {"month": "2026-03", "revenue": 0.0, "margin": 0.0, "shipRatio": 0.0}, {"month": "2026-04", "revenue": 0.0, "margin": 0.0, "shipRatio": 0.0}, {"month": "2026-05", "revenue": 0.0, "margin": 0.0, "shipRatio": 0.0}, {"month": "2026-06", "revenue": 0.0, "margin": 0.0, "shipRatio": 0.0}], "市场八十司": [{"month": "2026-01", "revenue": 34274.82, "margin": 9.39, "shipRatio": 21.93}, {"month": "2026-02", "revenue": 10565.76, "margin": -26.5, "shipRatio": 40.16}, {"month": "2026-03", "revenue": 13231.2, "margin": -5.22, "shipRatio": 6.95}, {"month": "2026-04", "revenue": 16595.04, "margin": 6.5, "shipRatio": 5.15}, {"month": "2026-05", "revenue": 76872.96, "margin": 8.94, "shipRatio": 5.91}, {"month": "2026-06", "revenue": 351746.08, "margin": 3.74, "shipRatio": 2.23}], "市场七九司": [{"month": "2026-01", "revenue": 0.0, "margin": 0.0, "shipRatio": 0.0}, {"month": "2026-02", "revenue": 15671.16, "margin": 14.05, "shipRatio": 6.35}, {"month": "2026-03", "revenue": 176600.11, "margin": 4.26, "shipRatio": 7.45}, {"month": "2026-04", "revenue": 291921.94, "margin": 7.27, "shipRatio": 2.71}, {"month": "2026-05", "revenue": 30833.36, "margin": 0.59, "shipRatio": 4.5}, {"month": "2026-06", "revenue": 63110.7, "margin": 7.59, "shipRatio": 10.31}], "市场七八司": [{"month": "2026-01", "revenue": 0.0, "margin": 0.0, "shipRatio": 0.0}, {"month": "2026-02", "revenue": 38901.8, "margin": 5.33, "shipRatio": 2.75}, {"month": "2026-03", "revenue": 50355.39, "margin": 6.8, "shipRatio": 6.55}, {"month": "2026-04", "revenue": 1929.55, "margin": 14.55, "shipRatio": 7.64}, {"month": "2026-05", "revenue": 11516.06, "margin": 9.76, "shipRatio": 3.72}, {"month": "2026-06", "revenue": 0.0, "margin": 0.0, "shipRatio": 0.0}], "市场七六司": [{"month": "2026-01", "revenue": 0.0, "margin": 0.0, "shipRatio": 0.0}, {"month": "2026-02", "revenue": 19392.19, "margin": 1.73, "shipRatio": 7.16}, {"month": "2026-03", "revenue": 83941.32, "margin": 1.01, "shipRatio": 1.95}, {"month": "2026-04", "revenue": 4897.48, "margin": -2.68, "shipRatio": 2.23}, {"month": "2026-05", "revenue": 1716.0, "margin": 0.01, "shipRatio": 15.62}, {"month": "2026-06", "revenue": 44076.38, "margin": 9.09, "shipRatio": 2.67}]};
+        
+        let chart = null;
+
+        function initChart() {
+            const chartDom = document.getElementById('chartDom');
+            chart = echarts.init(chartDom);
+            
+            updateChart('all');
+
+            window.addEventListener('resize', () => {
+                chart.resize();
+            });
+        }
+
+        function updateChart(branchKey) {
+            const data = chartData[branchKey] || [];
+            
+            const months = data.map(item => item.month);
+            const revenues = data.map(item => item.revenue);
+            const margins = data.map(item => item.margin);
+
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    textStyle: { color: '#f8fafc' },
+                    formatter: function(params) {
+                        const idx = params[0].dataIndex;
+                        const tData = data[idx];
+                        
+                        let res = `<div style="font-weight:bold;margin-bottom:6px;font-size:12px;color:#f8fafc;">${params[0].name}</div>`;
+                        params.forEach(p => {
+                            const val = p.value;
+                            const formatted = p.seriesName === '销售额'
+                                ? `$${Number(val).toLocaleString(undefined, {minimumFractionDigits: 2})}`
+                                : `${Number(val).toFixed(2)}%`;
+                            res += `<div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;margin-bottom:3px;color:#cbd5e1;">
+                                <span>${p.marker} ${p.seriesName}</span>
+                                <span style="font-weight:bold;color:#f8fafc;">${formatted}</span>
+                            </div>`;
+                        });
+                        
+                        if (tData) {
+                            res += `<div style="display:flex;justify-content:space-between;gap:16px;font-size:11px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.1);color:#94a3b8;">
+                                <span>🚚 包干费率</span>
+                                <span style="font-weight:bold;color:#f8fafc;">${tData.shipRatio.toFixed(2)}%</span>
+                            </div>`;
+                        }
+                        return res;
+                    }
+                },
+                legend: {
+                    data: ['销售额', '毛利率'],
+                    textStyle: { color: '#94a3b8', fontSize: 11 },
+                    top: 0
+                },
+                grid: {
+                    left: '2%',
+                    right: '2%',
+                    bottom: '2%',
+                    top: '12%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: months,
+                    axisLabel: { color: '#94a3b8', fontSize: 10 },
+                    axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+                },
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: '销售额 (USD)',
+                        nameTextStyle: { color: '#94a3b8', fontSize: 10 },
+                        axisLabel: {
+                            formatter: function(value) {
+                                return '$' + (value / 10000).toFixed(0) + '万';
+                            },
+                            color: '#94a3b8',
+                            fontSize: 10
+                        },
+                        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }
+                    },
+                    {
+                        type: 'value',
+                        name: '毛利率 (%)',
+                        nameTextStyle: { color: '#94a3b8', fontSize: 10 },
+                        position: 'right',
+                        axisLabel: {
+                            formatter: '{value}%',
+                            color: '#94a3b8',
+                            fontSize: 10
+                        },
+                        splitLine: { show: false }
+                    }
+                ],
+                series: [
+                    {
+                        name: '销售额',
+                        type: 'bar',
+                        data: revenues,
+                        itemStyle: {
+                            color: '#f97316',
+                            borderRadius: [4, 4, 0, 0]
+                        }
+                    },
+                    {
+                        name: '毛利率',
+                        type: 'line',
+                        yAxisIndex: 1,
+                        data: margins,
+                        symbol: 'circle',
+                        symbolSize: 8,
+                        itemStyle: { color: '#22d3ee' },
+                        lineStyle: { width: 3 }
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+        }
+
+        document.getElementById('branchSelector').addEventListener('change', (e) => {
+            updateChart(e.target.value);
+        });
+
+        window.onload = initChart;
+    </script>
+</body>
+</html>
