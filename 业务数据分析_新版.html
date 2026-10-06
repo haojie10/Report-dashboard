@@ -1,0 +1,2073 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>畅想结算与经营分析看板 (全指标专业版)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="vendor/xlsx.full.min.js"></script>
+<style>
+/* ── 主题系统（lieflat-charts 内置预设，同一时刻整页锁定一套） ── */
+:root {
+  --bg: #F7F2EB;
+  --ink: #081F5C;
+  --mut: rgba(8,31,92,.60);
+  --faint: rgba(8,31,92,.32);
+  --grid: rgba(8,31,92,.16);
+  --hero: #081F5C;
+  --data: #334EAC;
+  --data2: #7096D1;
+  --faintdata: #BAD6EB;
+  --card-bg: rgba(255,255,255,.45);
+  --border: rgba(8,31,92,.12);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', -apple-system, 'PingFang SC', 'Noto Sans SC', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background .25s, color .25s;
+}
+button, select { font: inherit; color: inherit; }
+.wrap { max-width: 1440px; margin: 0 auto; padding: 28px 36px 64px; }
+
+/* 头部导航与全局控制 */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1.5px solid var(--ink);
+  flex-wrap: wrap;
+}
+.brand-title h1 {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-title .tagline {
+  font-size: 12px;
+  color: var(--mut);
+  margin-top: 4px;
+  display: block;
+  font-weight: 500;
+}
+.ctrls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--grid);
+  border-radius: 99px;
+  padding: 2px;
+  background: rgba(0,0,0,.03);
+}
+.seg button {
+  border: 0;
+  background: none;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 99px;
+  cursor: pointer;
+  color: var(--mut);
+  transition: .15s;
+}
+.seg button.on {
+  background: var(--ink);
+  color: var(--bg);
+}
+select, .ghost {
+  border: 1px solid var(--grid);
+  background: var(--card-bg);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: .15s;
+}
+.ghost:hover, select:hover { border-color: var(--ink); }
+
+.theme-sw { display: flex; align-items: center; gap: 8px; }
+.theme-sw .lbl { font-size: 10.5px; letter-spacing: .12em; color: var(--mut); font-weight: 700; text-transform: uppercase; }
+
+/* 模块吸顶导航条 */
+.nav-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg);
+  display: flex;
+  gap: 8px;
+  padding: 14px 0 16px;
+  border-bottom: 1px solid var(--grid);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-tabs::-webkit-scrollbar { display: none; }
+.nav-tab {
+  border: 1px solid var(--faint);
+  background: none;
+  padding: 7px 16px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--mut);
+  transition: .15s;
+}
+.nav-tab:hover { border-color: var(--ink); color: var(--ink); }
+.nav-tab.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* 模块分区 */
+.section-block { margin-top: 48px; scroll-margin-top: 72px; }
+.section-header {
+  margin-bottom: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--grid);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.section-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-header .desc {
+  font-size: 12px;
+  color: var(--mut);
+  margin-top: 4px;
+}
+.section-ctrls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.section-ctrls .lbl {
+  font-size: 11px;
+  color: var(--mut);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* KPI 指标栏 */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.kpi {
+  padding: 6px 16px 6px 0;
+  border-right: 1px solid var(--grid);
+}
+.kpi:last-child { border-right: 0; }
+.kpi .k { font-size: 10.5px; letter-spacing: .1em; color: var(--mut); font-weight: 700; text-transform: uppercase; }
+.kpi .v {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  margin-top: 6px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', 'Inter', monospace;
+}
+.kpi .v small { font-size: 14px; font-weight: 600; color: var(--mut); margin-left: 3px; font-family: 'Inter', sans-serif; }
+.kpi .n { font-size: 11px; color: var(--mut); margin-top: 6px; }
+
+/* 经营诊断 Callout */
+.insight {
+  margin-bottom: 28px;
+  padding: 4px 0 4px 16px;
+  border-left: 3px solid var(--hero);
+  font-size: 13px;
+  line-height: 1.8;
+  max-width: 1100px;
+}
+.insight .t { font-size: 10.5px; letter-spacing: .12em; color: var(--mut); font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+.insight strong { font-weight: 700; }
+
+/* 卡片布局 */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px 36px; }
+.card { min-width: 0; }
+.card.wide { grid-column: 1 / -1; }
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.card h3 { font-size: 15px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 3px; }
+.card .sub { font-size: 11px; color: var(--mut); margin-bottom: 12px; line-height: 1.5; }
+.card .src { font-size: 9px; color: var(--faint); margin-top: 10px; letter-spacing: .08em; font-weight: 600; text-transform: uppercase; }
+
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+svg text { font-family: inherit; }
+.hit { cursor: pointer; }
+
+/* 提示徽章 */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 6px 4px 10px;
+  border-radius: 99px;
+}
+.pill b {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.2);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* 上传空状态 */
+.drop-box {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px;
+}
+.drop-box h1 { font-size: 38px; font-weight: 800; letter-spacing: -.03em; margin-bottom: 12px; }
+.drop-box p { font-size: 14px; color: var(--mut); line-height: 1.8; max-width: 600px; margin-bottom: 32px; }
+.zone {
+  width: min(600px, 90vw);
+  aspect-ratio: 2.2/1;
+  border: 1.5px dashed var(--faint);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: .2s;
+}
+.zone:hover, .zone.over { border-color: var(--ink); background: rgba(0,0,0,.02); }
+.zone b { font-size: 16px; font-weight: 700; }
+.zone span { font-size: 12px; color: var(--mut); }
+
+/* 动效 */
+.fade { animation: fade .6s ease both; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.pop { transform-box: fill-box; transform-origin: center; animation: pop .4s cubic-bezier(.2,.7,.3,1.3) both; }
+@keyframes pop { from { transform: scale(0); } to { transform: none; } }
+.still .fade, .still .pop { animation: none; }
+@media (prefers-reduced-motion: reduce) { .fade, .pop { animation: none; } }
+
+@media (max-width: 1024px) {
+  .grid2 { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .kpi:nth-child(2) { border-right: 0; }
+  .wrap { padding: 20px 16px 48px; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ═══════════════ 主题预设：严格遵循 lieflat-charts 标准 ═══════════════ */
+const THEMES = {
+  group: {
+    key: 'group', name: '集团汇报版', preset: '青瓷蓝 (Porcelain)',
+    BG: '#F7F2EB', TXT: '#081F5C', MUT: 'rgba(8,31,92,.60)', FAINT: 'rgba(8,31,92,.32)', GRID: 'rgba(8,31,92,.16)',
+    DATA: '#334EAC', DATA2: '#7096D1', HERO: '#081F5C', FAINTDATA: '#BAD6EB', HALO: 'rgba(247,242,235,.92)',
+    CAT5: ['#081F5C', '#224099', '#4E73BD', '#7C9ECE', '#BAD6EB'],
+    LINE_ACCENT: '#081F5C',
+    PALETTE: ['#081F5C', '#224099', '#334EAC', '#4E73BD', '#7096D1', '#7C9ECE', '#9BBBE0', '#BAD6EB', '#D0E3F3', '#506690', '#364B73', '#1D3056']
+  },
+  sub: {
+    key: 'sub', name: '子公司汇报版', preset: '编辑部橙 (Wire)',
+    BG: '#F0F0EE', TXT: '#1F1E1C', MUT: 'rgba(31,30,28,.60)', FAINT: 'rgba(31,30,28,.32)', GRID: 'rgba(31,30,28,.16)',
+    DATA: '#22211F', DATA2: '#8F8E86', HERO: '#F5572F', FAINTDATA: '#C0BFB7', HALO: 'rgba(255,255,255,.92)',
+    CAT5: ['#F5572F', '#22211F', '#585750', '#8F8E86', '#C0BFB7'],
+    LINE_ACCENT: '#F5572F',
+    PALETTE: ['#F5572F', '#22211F', '#3D3C38', '#585750', '#73726B', '#8F8E86', '#AAA9A2', '#C0BFB7', '#D5D4CE', '#E87A5D', '#BD401E', '#7F2810']
+  }
+};
+const INK_BOOST = { stroke: 1.8, floor: 0.85 };
+
+const NS = 'http://www.w3.org/2000/svg';
+const el = (p, t, a) => { const n = document.createElementNS(NS, t); for (const k in a) n.setAttribute(k, a[k]); p.appendChild(n); return n; };
+const txt = (p, a, s) => { const n = el(p, 'text', a); n.textContent = s; return n; };
+const tip = (n, s) => { const t = document.createElementNS(NS, 'title'); t.textContent = s; n.appendChild(t); };
+const rnd = (i, k) => Math.abs(((i * 73856093) ^ (k * 19349663)) % 1000) / 1000;
+const D2R = Math.PI / 180;
+const pol = (cx, cy, r, deg) => [cx + r * Math.cos(deg * D2R), cy + r * Math.sin(deg * D2R)];
+
+/* ═══════════════ 全局工具函数 ═══════════════ */
+const num = v => { if (typeof v === 'number') return v; if (!v) return 0; return Number(String(v).replace(/,/g, '')) || 0; };
+const round2 = n => Math.round(n * 100) / 100;
+const nice = x => { const e = Math.pow(10, Math.floor(Math.log10(Math.max(x, 1e-9)))); for (const m of [1, 2, 2.5, 5, 10]) { if (m * e >= x) return m * e; } return 10 * e; };
+const fW = v => { const a = Math.abs(v); return a >= 1e8 ? (v / 1e8).toFixed(2) + '亿' : a >= 1e4 ? (v / 1e4).toFixed(1) + '万' : Math.round(v).toLocaleString(); };
+const sum = (rows, f) => rows.reduce((s, r) => s + (f ? f(r) : r), 0);
+const groupBy = (rows, dim) => { const m = new Map(); rows.forEach(r => { const k = r[dim]; if (!m.has(k)) m.set(k, []); m.get(k).push(r); }); return m; };
+
+/* ═══════════════ 数据解析层（完整适配 7 类业务表格） ═══════════════ */
+function parsePercent(val) {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  const str = String(val).replace(/%/g, '').trim();
+  const n = Number(str);
+  if (isNaN(n)) return 0;
+  if (String(val).includes('%')) return n / 100;
+  return n;
+}
+
+function findKey(keys, kws) {
+  for (const w of kws) { const m = keys.find(k => k.toLowerCase() === w.toLowerCase()); if (m) return m; }
+  for (const w of kws) { const m = keys.find(k => k.includes(w)); if (m) return m; }
+  return null;
+}
+
+function formatDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) {
+    const y = val.getFullYear(), m = String(val.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+  const s = String(val).trim();
+  const n = Number(s);
+  if (!isNaN(n) && n > 30000 && n < 60000) {
+    const d = new Date((n - 25569) * 86400 * 1000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+  const m = s.match(/^(\d{4})[/-](\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}`;
+  if (/^\d{1,2}$/.test(s) && Number(s) >= 1 && Number(s) <= 12) return `2026-${s.padStart(2, '0')}`;
+  return s.includes('-') ? s : null;
+}
+
+// 1. 结算中心解析
+function parseSettlement(raw) {
+  return raw.filter(r => Object.keys(r).length > 5).map(item => {
+    const r = {}; Object.keys(item).forEach(k => r[k.trim()] = item[k]);
+    const keys = Object.keys(r);
+    const g = kws => { const k = findKey(keys, kws); return k ? r[k] : undefined; };
+    const rev = num(g(['销售额（美元）', '美元销售额', '应收货款（美元）', '应收货款_USD']));
+    const rate = num(g(['USD汇率', '汇率'])) || 6.9;
+    const x = num(g(['信保费用'])), b = num(g(['银行费用'])), c = num(g(['佣金']));
+    const revNet = rev - x - b - c;
+    return {
+      month: formatDate(g(['财务期间', '结算周期', '月份', '期间'])),
+      customer: g(['客户编号', '客户简称', '客户名称', '客户']) || '其他',
+      category: g(['一级目录', '品类', '分类']) || '其他',
+      market: g(['分公司', '市场分司', '区域', '市场']) || '总部',
+      rate, rev, revNet,
+      revRmbNet: num(g(['净销售额_RMB', '净销售_RMB'])) || revNet * rate,
+      gp: num(g(['毛利', 'GrossProfit'])),
+      ship: num(g(['出运包干费', '包干费'])),
+      purchase: num(g(['采购金额（含税销售）', '采购成本'])),
+      refund: num(g(['减：退税额', '退税额']))
+    };
+  }).filter(r => r.month);
+}
+
+// 2. 外销合同与下单解析（严谨处理外销币种：支持俄罗斯2087/宁波市863等RMB转USD折算）
+function parseContracts(raw, headers) {
+  if (!raw.length) return { list: [], branches: [], customers: [], months: [] };
+  const keys = Object.keys(raw[0]).map(k => k.trim());
+  const k_contract = findKey(keys, ['外销合同', '合同号', '合同编号']);
+  const k_branch = findKey(keys, ['分公司', '部门']);
+  const k_cust_id = findKey(keys, ['客户编号', '客户ID', '客户代码']);
+  const k_cust_name = findKey(keys, ['客户简称', '客户名称', '客户']);
+  const k_currency = findKey(keys, ['外销币种', '币种', '结算币种']);
+  const k_b_margin = findKey(keys, ['预算毛利率', '预算利润率']);
+  const k_ship_amt = findKey(keys, ['已出运金额', '已出运', '出运金额']);
+  const k_ship_margin = findKey(keys, ['出运毛利率', '实际毛利率', '出运利润率']);
+  const k_tot_amt = findKey(keys, ['货值合计', '货值总计', '合同金额', '合同货值']);
+  const k_tot_amt_rmb = findKey(keys, ['人民币货值', '货值RMB']);
+  const k_b_profit = findKey(keys, ['毛利额', '毛利', '预算毛利额', '毛      利']);
+  const k_act_profit = findKey(keys, ['实际毛利额', '实际毛利']);
+  const k_diff_profit = findKey(keys, ['毛利额差异', '毛利差异']);
+  const k_deliv_m = findKey(keys, ['交付月份', '交货月份', '交期']);
+  const k_order_date = findKey(keys, ['合同日期', '日期', '合同时间']);
+
+  const header_G = headers && headers.length > 6 ? headers[6] : null;
+
+  const list = raw.filter(r => r[k_contract]).map(r => {
+    // 币种判定与折算（如果是 RMB 则除以 6.6 转 USD）
+    const currency = header_G && r[header_G] !== undefined ? String(r[header_G]).trim().toUpperCase() : String(r[k_currency] || 'USD').trim().toUpperCase();
+    let rawTotal = num(r[k_tot_amt]);
+    let totalAmount = rawTotal;
+    if (currency === 'RMB') {
+      totalAmount = rawTotal / 6.6;
+    }
+    const shippedAmount = num(r[k_ship_amt]);
+    const unshippedAmount = Math.max(0, totalAmount - shippedAmount);
+    const budgetMargin = parsePercent(r[k_b_margin]);
+    const shippedMargin = (r[k_ship_margin] !== undefined && r[k_ship_margin] !== null && String(r[k_ship_margin]).trim() !== '') ? parsePercent(r[k_ship_margin]) : null;
+    
+    const totalAmountRmb = num(r[k_tot_amt_rmb]) || (currency === 'RMB' ? rawTotal : totalAmount * 6.6);
+    const budgetProfit = num(r[k_b_profit]);
+    const actualProfit = num(r[k_act_profit]) || (shippedMargin !== null ? (shippedAmount * 6.6 * shippedMargin) : 0);
+    const profitDiff = (r[k_diff_profit] !== undefined && r[k_diff_profit] !== null && String(r[k_diff_profit]).trim() !== '') ? num(r[k_diff_profit]) : (shippedMargin !== null ? (actualProfit - budgetProfit * (totalAmount > 0 ? Math.min(1, shippedAmount / totalAmount) : 1)) : 0);
+
+    // 优先采用客户编号(如 俄罗斯2087, 宁波市863)，缺失则采用客户简称
+    const customerId = String(r[k_cust_id] || r[k_cust_name] || '未指定').trim();
+    const customerName = String(r[k_cust_name] || r[k_cust_id] || '未指定').trim();
+
+    return {
+      contractNo: String(r[k_contract]).trim(),
+      branch: String(r[k_branch] || '未指定').trim(),
+      customerId, customerName, currency,
+      totalAmount, totalAmountRmb, shippedAmount, unshippedAmount,
+      budgetMargin, shippedMargin,
+      marginDiff: shippedMargin !== null ? (shippedMargin - budgetMargin) : null,
+      actualProfit, budgetProfit, profitDiff,
+      deliveryMonth: formatDate(r[k_deliv_m]) || '未知月份',
+      orderMonth: formatDate(r[k_order_date]) || '2026-06',
+      isShipped: shippedAmount > 0 || shippedMargin !== null
+    };
+  });
+
+  return {
+    list,
+    branches: [...new Set(list.map(i => i.branch))].filter(Boolean).sort(),
+    customers: [...new Set(list.map(i => i.customerId))].filter(Boolean).sort(),
+    orderMonths: [...new Set(list.map(i => i.orderMonth))].filter(m => m !== '未知月份' && m).sort(),
+    deliveryMonths: [...new Set(list.map(i => i.deliveryMonth))].filter(m => m !== '未知月份' && m).sort()
+  };
+}
+
+// 3. 出运明细解析 (畅想出运数据)
+function parseShipments(raw) {
+  if (!raw.length) return { list: [], months: [] };
+  const keys = Object.keys(raw[0]).map(k => k.trim());
+  const k_contract = findKey(keys, ['外销合同', '合同号', '合同编号']);
+  const k_order = findKey(keys, ['订单号', '出运单号', '订单编号']);
+  const k_month = findKey(keys, ['出运月份', '操作月份', '月份', '出运期']);
+  const k_amount = findKey(keys, ['应收收汇', '出运金额', 'FOB', '销售额']);
+  const k_profit = findKey(keys, ['出厂价_预计毛利', '实际毛利', '毛利']);
+
+  const list = raw.filter(r => r[k_contract] || (k_order && r[k_order])).map(r => ({
+    contractNo: String(r[k_contract] || '').trim(),
+    orderNo: k_order ? String(r[k_order] || '').trim() : '',
+    month: num(r[k_month]),
+    amount: num(r[k_amount]),
+    profit: num(r[k_profit])
+  }));
+  const months = [...new Set(list.map(s => s.month))].filter(m => typeof m === 'number' && m > 0).sort((a, b) => a - b);
+  return { list, months };
+}
+
+// 4. 客户项目解析
+function parseProjects(raw) {
+  if (!raw.length) return { list: [], customers: [], branches: [], months: [] };
+  const keys = Object.keys(raw[0]).map(k => k.trim());
+  const k_branch = findKey(keys, ['分公司', '部门']);
+  const k_cust = findKey(keys, ['客户编号', '客户ID', '客户代码']);
+  const k_cat3 = findKey(keys, ['三级目录', '三级分类', '品类']);
+  const k_amt = findKey(keys, ['项目金额（万$）', '项目金额', '金额']);
+  const k_margin = findKey(keys, ['预计毛利率', '毛利率']);
+  const k_pred = findKey(keys, ['下单预测', '预测']);
+  const k_m = findKey(keys, ['预计下单月份', '月份', '下单月份']);
+
+  let lastB = '未指定', lastC = '未指定';
+  const list = raw.map(r => {
+    let b = r[k_branch] ? String(r[k_branch]).trim() : '';
+    let c = r[k_cust] ? String(r[k_cust]).trim() : '';
+    if (b) lastB = b; else b = lastB;
+    if (c) lastC = c; else c = lastC;
+    const amountUsd = num(r[k_amt]) * 10000;
+    const margin = parsePercent(r[k_margin]);
+    const predict = r[k_pred] ? String(r[k_pred]).trim() : '不确定下单';
+    return {
+      branch: b, customerId: c,
+      categoryL3: r[k_cat3] ? String(r[k_cat3]).trim() : '其他品类',
+      amountUsd, margin, predict,
+      expectedMonth: formatDate(r[k_m]) || '未知月份'
+    };
+  }).filter(i => i.amountUsd > 0);
+
+  return {
+    list,
+    customers: [...new Set(list.map(i => i.customerId))].filter(Boolean).sort(),
+    branches: [...new Set(list.map(i => i.branch))].filter(Boolean).sort(),
+    months: [...new Set(list.map(i => i.expectedMonth))].filter(m => m && m !== '未知月份').sort()
+  };
+}
+
+// 5. 采购合同解析
+function parsePurchases(raw) {
+  if (!raw.length) return { list: [], settlements: [], branches: [], months: [] };
+  const keys = Object.keys(raw[0]).map(k => k.trim());
+  const k_contract = findKey(keys, ['采购合同', '合同号', '合同编号']);
+  const k_amt = findKey(keys, ['货值合计', '货值总计', '合同金额', '货值']);
+  const k_settle = findKey(keys, ['结算方式', '结算']);
+  const k_branch = findKey(keys, ['分公司', '部门']);
+  const k_date = findKey(keys, ['合同日期', '采购日期', '日期']);
+  const k_cat = findKey(keys, ['产品大类', '一级分类', '品类', '分类']);
+
+  const list = raw.filter(r => r[k_contract]).map(r => ({
+    contractNo: String(r[k_contract]).trim(),
+    amount: num(r[k_amt]),
+    settlement: String(r[k_settle] || '未指定').trim(),
+    branch: String(r[k_branch] || '未指定').trim(),
+    category: String(r[k_cat] || '家居生活用品').trim(),
+    purchaseMonth: formatDate(r[k_date]) || '未知月份'
+  }));
+  return {
+    list,
+    settlements: [...new Set(list.map(i => i.settlement))].filter(Boolean).sort(),
+    branches: [...new Set(list.map(i => i.branch))].filter(Boolean).sort(),
+    months: [...new Set(list.map(i => i.purchaseMonth))].filter(m => m && m !== '未知月份').sort()
+  };
+}
+
+// 6. 客诉解析
+function parseComplaints(raw) {
+  if (!raw.length) return { list: [], totalLoss: 0, customers: [], reasons: [] };
+  const keys = Object.keys(raw[0]).map(k => k.trim());
+  const k_cust = findKey(keys, ['客户编号', '客户', '客户代码']);
+  const k_reason = findKey(keys, ['客诉类型', '客诉原因', '原因', '投诉类型']);
+  const k_loss = findKey(keys, ['客户索赔金额（美元）', '索赔金额', '损失金额']);
+
+  const list = raw.filter(r => r[k_cust]).map(r => ({
+    customer: String(r[k_cust]).trim(),
+    reason: r[k_reason] ? String(r[k_reason]).trim() : '其他原因',
+    loss: num(r[k_loss])
+  })).filter(i => i.customer);
+
+  return {
+    list,
+    totalLoss: sum(list, i => i.loss),
+    customers: [...new Set(list.map(i => i.customer))].filter(Boolean).sort(),
+    reasons: [...new Set(list.map(i => i.reason))].filter(Boolean).sort()
+  };
+}
+
+// 7. 产品开发解析
+function parseDev(rows) {
+  if (!rows || rows.length < 3) return { list: [], indicators: [], divisions: [], months: [] };
+  const row1 = rows[0];
+  const colToMonth = {};
+  let curM = null;
+  for (let c = 2; c < row1.length; c++) {
+    if (row1[c]) curM = String(row1[c]).trim();
+    colToMonth[c] = curM;
+  }
+  const list = [];
+  let curInd = 'MDS产品录入';
+  for (let rIdx = 2; rIdx < rows.length; rIdx++) {
+    const row = rows[rIdx]; if (!row || !row.length) continue;
+    if (row[0]) curInd = String(row[0]).trim().split('\n')[0];
+    const division = String(row[1] || '全分司').trim();
+    for (let c = 2; c < row.length; c += 2) {
+      const m = colToMonth[c];
+      const target = num(row[c]);
+      const actual = num(row[c + 1]);
+      if (m && (target > 0 || actual > 0)) {
+        list.push({ indicator: curInd, division, month: m, target, actual });
+      }
+    }
+  }
+  return {
+    list,
+    indicators: [...new Set(list.map(i => i.indicator))].filter(Boolean),
+    divisions: [...new Set(list.map(i => i.division))].filter(Boolean).sort(),
+    months: [...new Set(list.map(i => i.month))].filter(Boolean).sort()
+  };
+}
+
+/* ═══════════════ 全局状态中心 ═══════════════ */
+const STATE = {
+  data: null, // 全部解析后的 Sheet 数据对象
+  theme: localStorage.getItem('lf-theme') || 'group',
+  
+  // 模块 1 筛选
+  branch: 'all',
+  period: 'all',
+  dim: 'customer',
+  metric: 'rev',
+  bMetric: 'rev',
+  item: null,
+
+  // 模块 2 筛选
+  contractBranch: 'all',
+  contractCustomer: 'all',
+  contractMonth: 'all',
+  progressDim: 'customer', // 'customer' 或 'branch'
+
+  // 模块 3 筛选
+  orderBranch: 'all',
+  orderCustomer: 'all',
+  orderMonth: 'all',
+
+  // 模块 4 筛选
+  projectScope: 'likely', // 'likely' 预计可下 或 'all' 全部
+  projectBranch: 'all',
+  projectMonth: 'all',
+
+  // 模块 5 筛选
+  devDivision: 'all',
+
+  // 模块 6 筛选
+  purchaseBranch: 'all',
+  purchaseMonth: 'all',
+
+  // 模块 7 筛选
+  complaintMetric: 'Loss', // 'Loss' 损失金额 或 'Count' 发生次数
+
+  animate: true
+};
+
+const T = () => THEMES[STATE.theme];
+
+function applyTheme() {
+  const t = T(), r = document.documentElement.style;
+  r.setProperty('--bg', t.BG); r.setProperty('--ink', t.TXT);
+  r.setProperty('--mut', t.MUT); r.setProperty('--faint', t.FAINT);
+  r.setProperty('--grid', t.GRID); r.setProperty('--hero', t.HERO);
+  r.setProperty('--data', t.DATA); r.setProperty('--data2', t.DATA2);
+  r.setProperty('--faintdata', t.FAINTDATA);
+}
+
+/* ═══════════════ 启动与主框架 ═══════════════ */
+const app = document.getElementById('app');
+
+function showUpload() {
+  app.innerHTML = `
+    <div class="drop-box">
+      <h1>畅想结算与经营分析看板</h1>
+      <p>导入 <code>2026年1-8月畅想结算数据.xlsx</code>，即刻呈现涵盖结算中心、外销合同出运、外销下单分析、客户项目预测、产品开发进度、采购结算方式与售后客诉损失的全部 7 大业务模块。支持各模块独立维度筛选、币种汇率自动折算与双汇报主题秒级切换。</p>
+      <label class="zone" id="zone">
+        <input type="file" hidden accept=".xlsx,.xls,.csv">
+        <b>拖入 Excel 结算工作表或点击上传</b>
+        <span>支持全部 7 类核心业务 Sheet · 纯本地解析离线运行 · 数据安全私密</span>
+      </label>
+      <div style="margin-top: 28px;">${renderThemeToggle()}</div>
+    </div>`;
+  const z = document.getElementById('zone'), inp = z.querySelector('input');
+  inp.onchange = e => readFile(e.target.files[0]);
+  ['dragenter', 'dragover'].forEach(ev => z.addEventListener(ev, e => { e.preventDefault(); z.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => z.addEventListener(ev, e => { e.preventDefault(); z.classList.remove('over'); }));
+  z.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]); });
+  bindThemeButtons();
+}
+
+function renderThemeToggle() {
+  return `
+    <div class="theme-sw">
+      <span class="lbl">汇报版本</span>
+      <div class="seg" id="themeSeg">
+        ${Object.values(THEMES).map(t => `<button data-t="${t.key}" class="${STATE.theme === t.key ? 'on' : ''}">${t.name}</button>`).join('')}
+      </div>
+    </div>`;
+}
+
+function bindThemeButtons() {
+  document.querySelectorAll('#themeSeg button').forEach(b => b.onclick = () => {
+    STATE.theme = b.dataset.t; localStorage.setItem('lf-theme', STATE.theme);
+    applyTheme(); STATE.animate = false;
+    if (STATE.data) renderApp(); else showUpload();
+  });
+}
+
+function readFile(f) {
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = e => loadWorkbook(new Uint8Array(e.target.result));
+  rd.readAsArrayBuffer(f);
+}
+
+function loadWorkbook(buf) {
+  try {
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    
+    // 1. 结算中心
+    const sName = wb.SheetNames.find(n => n.includes('结算中心')) || wb.SheetNames[0];
+    const sRows = XLSX.utils.sheet_to_json(wb.Sheets[sName], { defval: '' });
+    const settlement = parseSettlement(sRows);
+    if (!settlement.length) { alert('未在结算中心工作表中发现有效数据'); return; }
+
+    // 2. 外销合同
+    let contracts = { list: [], branches: [], customers: [], months: [] };
+    const cName = wb.SheetNames.find(n => n.includes('外销合同'));
+    if (cName) {
+      const cSheet = wb.Sheets[cName];
+      let headers = [];
+      if (cSheet['!ref']) {
+        let dec = XLSX.utils.decode_range(cSheet['!ref']);
+        for (let c = dec.s.c; c <= dec.e.c; ++c) {
+          let cell = cSheet[XLSX.utils.encode_cell({r: 0, c})];
+          headers.push(cell ? String(cell.v).trim() : undefined);
+        }
+      }
+      contracts = parseContracts(XLSX.utils.sheet_to_json(cSheet, { defval: '' }), headers);
+    }
+
+    // 3. 出运明细
+    let shipments = { list: [], months: [] };
+    const shName = wb.SheetNames.find(n => n.includes('出运') && !n.includes('透视'));
+    if (shName) {
+      shipments = parseShipments(XLSX.utils.sheet_to_json(wb.Sheets[shName], { defval: '' }));
+    }
+
+    // 4. 客户项目
+    let projects = { list: [], customers: [], branches: [], months: [] };
+    const prName = wb.SheetNames.find(n => n.includes('项目'));
+    if (prName) projects = parseProjects(XLSX.utils.sheet_to_json(wb.Sheets[prName], { defval: '' }));
+
+    // 5. 采购合同
+    let purchases = { list: [], settlements: [], branches: [], months: [] };
+    const puName = wb.SheetNames.find(n => n.includes('采购合同'));
+    if (puName) purchases = parsePurchases(XLSX.utils.sheet_to_json(wb.Sheets[puName], { defval: '' }));
+
+    // 6. 客诉与售后
+    let complaints = { list: [], totalLoss: 0, customers: [], reasons: [] };
+    const cpName = wb.SheetNames.find(n => n.includes('客诉') || n.includes('售后') || n.includes('投诉'));
+    if (cpName) complaints = parseComplaints(XLSX.utils.sheet_to_json(wb.Sheets[cpName], { defval: '' }));
+
+    // 7. 产品开发
+    let dev = { list: [], indicators: [], divisions: [], months: [] };
+    const dvName = wb.SheetNames.find(n => n.includes('开发'));
+    if (dvName) dev = parseDev(XLSX.utils.sheet_to_json(wb.Sheets[dvName], { header: 1 }));
+
+    STATE.data = { settlement, contracts, shipments, projects, purchases, complaints, dev };
+    STATE.branch = 'all'; STATE.period = 'all'; STATE.item = null; STATE.animate = true;
+    renderApp();
+  } catch (err) { console.error(err); alert('解析异常：' + err.message); }
+}
+
+function summarizeSettlement(rows) {
+  const rev = sum(rows, r => r.revNet), gp = sum(rows, r => r.gp);
+  const gross = sum(rows, r => r.revRmbNet), ship = sum(rows, r => r.ship);
+  const margin = gross > 0 ? (gp / gross * 100) : 0;
+  const shipPct = gross > 0 ? (ship / gross * 100) : 0;
+  return { rev, gp, gross, ship, margin, shipPct, n: rows.length };
+}
+
+/* ═══════════════ 全局主应用渲染 ═══════════════ */
+function renderApp() {
+  const d = STATE.data;
+  const months = [...new Set(d.settlement.map(r => r.month))].sort();
+  const branches = [...new Set(d.settlement.map(r => r.market))].sort();
+
+  // 模块 1 数据切片
+  const rowsBase = d.settlement.filter(r => STATE.branch === 'all' || r.market === STATE.branch);
+  const rowsTrend = STATE.item ? rowsBase.filter(r => r[STATE.dim] === STATE.item) : rowsBase;
+  const rowsPeriod = rowsTrend.filter(r => STATE.period === 'all' || r.month === STATE.period);
+  const sm = summarizeSettlement(rowsPeriod);
+
+  const sections = [
+    { id: 'sec-overview', name: '① 结算中心核心总览' },
+    { id: 'sec-contracts', name: '② 外销合同出运及毛利' },
+    { id: 'sec-orders', name: '③ 外销下单分析与交付节奏' },
+    { id: 'sec-projects', name: '④ 客户项目与下单预测' },
+    { id: 'sec-dev', name: '⑤ 产品开发目标与达成' },
+    { id: 'sec-purchase', name: '⑥ 采购合同与结算方式' },
+    { id: 'sec-complaints', name: '⑦ 售后客诉与损失归因' }
+  ];
+
+  app.innerHTML = `
+    <div class="wrap ${STATE.animate ? '' : 'still'}">
+      <header class="top-bar">
+        <div class="brand-title">
+          <h1>畅想结算与经营分析</h1>
+          <span class="tagline">${STATE.period === 'all' ? '1–8 月度累计' : STATE.period} · ${STATE.branch === 'all' ? '全部分公司' : STATE.branch} · ${sm.n} 笔结算数据</span>
+        </div>
+        <div class="ctrls">
+          ${STATE.item ? `<span class="pill">下钻：${STATE.item}<b id="clrItem">×</b></span>` : ''}
+          <select id="selBranch">
+            <option value="all">全部分公司</option>
+            ${branches.map(b => `<option value="${b}" ${b === STATE.branch ? 'selected' : ''}>${b}</option>`).join('')}
+          </select>
+          <select id="selPeriod">
+            <option value="all">全部月份</option>
+            ${months.map(m => `<option value="${m}" ${m === STATE.period ? 'selected' : ''}>${m}</option>`).join('')}
+          </select>
+          <div class="seg" id="dimSeg">
+            ${[['customer', '客户'], ['category', '品类'], ['market', '分公司']].map(([k, n]) => `<button data-d="${k}" class="${STATE.dim === k ? 'on' : ''}">${n}</button>`).join('')}
+          </div>
+          ${renderThemeToggle()}
+          <button class="ghost" id="reupBtn">重新导入</button>
+        </div>
+      </header>
+
+      <!-- 吸顶导航条 -->
+      <nav class="nav-tabs">
+        ${sections.map(s => `<button class="nav-tab" data-sec="${s.id}">${s.name}</button>`).join('')}
+      </nav>
+
+      <!-- ═════════ 模块 1：结算中心核心总览 ═════════ -->
+      <section id="sec-overview" class="section-block">
+        <div class="section-header">
+          <div>
+            <h2>① 结算中心核心总览</h2>
+            <div class="desc">包含月度销售与毛利率双轴复合走势、Top 4 分公司占比 (100-Tick)、Top 10 下钻排行及利润溯源瀑布图</div>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><div class="k">销售额 · USD</div><div class="v">${fW(sm.rev).replace(/(万|亿)$/, '<small>$1</small>')}</div><div class="n">折合人民币 ¥${fW(sm.gross)}</div></div>
+          <div class="kpi"><div class="k">毛利额 · RMB</div><div class="v">${fW(sm.gp).replace(/(万|亿)$/, '<small>$1</small>')}</div><div class="n">${STATE.period === 'all' ? months.length + ' 个月累计' : '当月'}</div></div>
+          <div class="kpi"><div class="k">综合毛利率</div><div class="v">${sm.margin.toFixed(2)}<small>%</small></div><div class="n">${sm.margin >= 12 ? '高于' : '低于'} 12% 基准 ${Math.abs(sm.margin - 12).toFixed(2)} 个百分点</div></div>
+          <div class="kpi"><div class="k">包干费率</div><div class="v">${sm.shipPct.toFixed(2)}<small>%</small></div><div class="n">${sm.shipPct <= 4 ? '受控在 4% 控制线内' : '超出 4% 警戒线 ' + (sm.shipPct - 4).toFixed(2) + ' 个点'}</div></div>
+        </div>
+
+        <div class="insight">
+          <div class="t">AI 经营诊断</div>
+          <p>当前综合毛利率为 <strong>${sm.margin.toFixed(2)}%</strong>，${sm.margin >= 12 ? '优于 12% 目标基准线，整体盈利表现健康。' : '低于 12% 预设基准，需关注低毛利订单占比。'}</p>
+          <p>物流及出运包干费率为 <strong>${sm.shipPct.toFixed(2)}%</strong>，${sm.shipPct <= 4 ? '控制在 4% 安全线以内，履约成本受控。' : '超出 4% 预警线，建议核实大票海运与包干明细支出。'}</p>
+        </div>
+
+        <div class="grid2">
+          <div class="card wide">
+            <div class="card-head"><div><h3 id="t1">月度销售与毛利率双轴趋势</h3><div class="sub" id="s1"></div></div></div>
+            <svg id="c1" viewBox="0 0 760 340"></svg>
+            <div class="src">RUNG BARS & HAIRLINE LINE · 销售额 (美元) + 综合毛利率折线 (右轴) · 点击柱体切换月份</div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div><h3 id="t2">分公司业务权重占比</h3><div class="sub" id="s2"></div></div>
+              <div class="seg" id="bSeg">
+                <button data-m="rev" class="${STATE.bMetric === 'rev' ? 'on' : ''}">销售</button>
+                <button data-m="gp" class="${STATE.bMetric === 'gp' ? 'on' : ''}">毛利</button>
+              </div>
+            </div>
+            <svg id="c2" viewBox="0 0 420 320"></svg>
+            <div class="src">TICK DONUT · 1 TICK = 1% · TOP 4 分公司 + 其余合并项</div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div><h3 id="t3">Top 10 排名分布</h3><div class="sub" id="s3"></div></div>
+              <div class="seg" id="mSeg">
+                <button data-m="rev" class="${STATE.metric === 'rev' ? 'on' : ''}">销售额</button>
+                <button data-m="gp" class="${STATE.metric === 'gp' ? 'on' : ''}">毛利额</button>
+              </div>
+            </div>
+            <svg id="c3" viewBox="0 0 420 340"></svg>
+            <div class="src">TICK ROWS · 1 TICK = 单位金额 · 点击任意行快速下钻</div>
+          </div>
+
+          <div class="card wide">
+            <div class="card-head"><div><h3 id="t4">利润构成拆解账桥 (Waterfall)</h3><div class="sub" id="s4"></div></div></div>
+            <svg id="c4" viewBox="0 0 760 320"></svg>
+            <div class="src">RUNG WATERFALL · 人民币销售额到毛利的逐级因果递减与退税回补</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════════ 模块 2：外销合同出运及毛利跟踪 ═════════ -->
+      <section id="sec-contracts" class="section-block">
+        <div class="section-header">
+          <div>
+            <h2>② 外销合同出运及毛利跟踪</h2>
+            <div class="desc">包含合同出运进度对比、毛利率预算 vs 出运实际毛利率（按客户 / Top 10 合同）及毛利偏差绝对值排行</div>
+          </div>
+          <div class="section-ctrls">
+            <span class="lbl">出运月:</span>
+            <select id="selContractMonth">
+              <option value="all">所有出运月份</option>
+              ${d.shipments.months.map(m => `<option value="${m}" ${String(m) === String(STATE.contractMonth) ? 'selected' : ''}>${m}月</option>`).join('')}
+            </select>
+            <span class="lbl">分公司:</span>
+            <select id="selContractBranch">
+              <option value="all">所有分公司</option>
+              ${d.contracts.branches.map(b => `<option value="${b}" ${b === STATE.contractBranch ? 'selected' : ''}>${b}</option>`).join('')}
+            </select>
+            <span class="lbl">客户:</span>
+            <select id="selContractCustomer">
+              <option value="all">所有客户编号</option>
+              ${d.contracts.customers.map(c => `<option value="${c}" ${c === STATE.contractCustomer ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div id="contract-content"></div>
+      </section>
+
+      <!-- ═════════ 模块 3：外销下单分析与跟踪 ═════════ -->
+      <section id="sec-orders" class="section-block">
+        <div class="section-header">
+          <div>
+            <h2>③ 外销下单分析与交付节奏</h2>
+            <div class="desc">包含下单月度金额与毛利走势、预计交付月份金额趋势、按客户/分公司/采购产品分类(前12类)占比结构</div>
+          </div>
+          <div class="section-ctrls">
+            <span class="lbl">下单月:</span>
+            <select id="selOrderMonth">
+              <option value="all">所有下单月份</option>
+              ${d.contracts.orderMonths.map(m => `<option value="${m}" ${m === STATE.orderMonth ? 'selected' : ''}>${m}</option>`).join('')}
+            </select>
+            <span class="lbl">分公司:</span>
+            <select id="selOrderBranch">
+              <option value="all">所有分公司</option>
+              ${d.contracts.branches.map(b => `<option value="${b}" ${b === STATE.orderBranch ? 'selected' : ''}>${b}</option>`).join('')}
+            </select>
+            <span class="lbl">客户:</span>
+            <select id="selOrderCustomer">
+              <option value="all">所有客户编号</option>
+              ${d.contracts.customers.map(c => `<option value="${c}" ${c === STATE.orderCustomer ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div id="order-content"></div>
+      </section>
+
+      <!-- ═════════ 模块 4：客户项目与下单预测追踪 ═════════ -->
+      <section id="sec-projects" class="section-block">
+        <div class="section-header">
+          <div>
+            <h2>④ 客户项目与下单预测追踪</h2>
+            <div class="desc">包含按客户项目金额占比、三级目录品类分布 Top 10、各客户月度下单预测堆叠走势及预计下单范围切换</div>
+          </div>
+          <div class="section-ctrls">
+            <div class="seg" id="projScopeSeg">
+              <button data-s="likely" class="${STATE.projectScope === 'likely' ? 'on' : ''}">预计可下项目</button>
+              <button data-s="all" class="${STATE.projectScope === 'all' ? 'on' : ''}">全部储备项目</button>
+            </div>
+            <span class="lbl">预计下单月:</span>
+            <select id="selProjectMonth">
+              <option value="all">全部预计下单月份</option>
+              ${d.projects.months.map(m => `<option value="${m}" ${m === STATE.projectMonth ? 'selected' : ''}>${m}</option>`).join('')}
+            </select>
+            <span class="lbl">分公司:</span>
+            <select id="selProjectBranch">
+              <option value="all">所有分公司</option>
+              ${d.projects.branches.map(b => `<option value="${b}" ${b === STATE.projectBranch ? 'selected' : ''}>${b}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div id="project-content"></div>
+      </section>
+
+      <!-- ═════════ 模块 5：产品开发目标与进度分析 ═════════ -->
+      <section id="sec-dev" class="section-block">
+        <div class="section-header">
+          <div>
+            <h2>⑤ 产品开发目标与进度分析</h2>
+            <div class="desc">包含每月核心指标(MDS录入/实样入库/样册输出)目标达成率对比及各指标月度实际推进走势</div>
+          </div>
+          <div class="section-ctrls">
+            <span class="lbl">分公司:</span>
+            <select id="selDevDivision">
+              <option value="all">全部市场分司</option>
+              ${d.dev.divisions.map(dv => `<option value="${dv}" ${dv === STATE.devDivision ? 'selected' : ''}>${dv}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div id="dev-content"></div>
+      </section>
+
+      <!-- ═════════ 模块 6：采购合同与结算方式分析 ═════════ -->
+      <section id="sec-purchase" class="section-block">
+        <div class="section-header">
+          <div>
+            <h2>⑥ 采购合同与结算方式分析</h2>
+            <div class="desc">包含按采购金额与合同单量双重视角的结算方式占比环形图及供应结构分析</div>
+          </div>
+          <div class="section-ctrls">
+            <span class="lbl">合同月份:</span>
+            <select id="selPurchaseMonth">
+              <option value="all">全部合同月份</option>
+              ${d.purchases.months.map(m => `<option value="${m}" ${m === STATE.purchaseMonth ? 'selected' : ''}>${m}</option>`).join('')}
+            </select>
+            <span class="lbl">分公司:</span>
+            <select id="selPurchaseBranch">
+              <option value="all">所有分公司</option>
+              ${d.purchases.branches.map(b => `<option value="${b}" ${b === STATE.purchaseBranch ? 'selected' : ''}>${b}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div id="purchase-content"></div>
+      </section>
+
+      <!-- ═════════ 模块 7：售后客诉与损失分析 ═════════ -->
+      <section id="sec-complaints" class="section-block">
+        <div class="section-header">
+          <div>
+            <h2>⑦ 售后客诉与损失分析</h2>
+            <div class="desc">包含客户视角客诉原因分布堆叠图及客诉原因视角涉及客户分布矩阵，支持损失金额 / 投诉频次切换</div>
+          </div>
+          <div class="section-ctrls">
+            <div class="seg" id="compMetricSeg">
+              <button data-m="Loss" class="${STATE.complaintMetric === 'Loss' ? 'on' : ''}">索赔损失金额 ($)</button>
+              <button data-m="Count" class="${STATE.complaintMetric === 'Count' ? 'on' : ''}">客诉发生次数</button>
+            </div>
+          </div>
+        </div>
+        <div id="complaint-content"></div>
+      </section>
+    </div>`;
+
+  applyTheme();
+  bindThemeButtons();
+  bindAppEvents(months);
+
+  // 渲染所有 7 个模块的图表
+  renderModule1(months, rowsTrend, rowsPeriod, sm);
+  renderModule2();
+  renderModule3();
+  renderModule4();
+  renderModule5();
+  renderModule6();
+  renderModule7();
+
+  STATE.animate = false;
+}
+
+function bindAppEvents(months) {
+  // 全局控制
+  document.getElementById('reupBtn').onclick = () => { STATE.data = null; showUpload(); };
+  document.getElementById('selBranch').onchange = e => { STATE.branch = e.target.value; STATE.item = null; STATE.animate = false; renderApp(); };
+  document.getElementById('selPeriod').onchange = e => { STATE.period = e.target.value; STATE.animate = false; renderApp(); };
+  document.querySelectorAll('#dimSeg button').forEach(b => b.onclick = () => { STATE.dim = b.dataset.d; STATE.item = null; STATE.animate = false; renderApp(); });
+  document.querySelectorAll('#bSeg button').forEach(b => b.onclick = () => { STATE.bMetric = b.dataset.m; STATE.animate = false; renderApp(); });
+  document.querySelectorAll('#mSeg button').forEach(b => b.onclick = () => { STATE.metric = b.dataset.m; STATE.animate = false; renderApp(); });
+  const ci = document.getElementById('clrItem'); if (ci) ci.onclick = () => { STATE.item = null; STATE.animate = false; renderApp(); };
+
+  // 模块 2 筛选
+  document.getElementById('selContractMonth').onchange = e => { STATE.contractMonth = e.target.value; renderModule2(); };
+  document.getElementById('selContractBranch').onchange = e => { STATE.contractBranch = e.target.value; renderModule2(); };
+  document.getElementById('selContractCustomer').onchange = e => { STATE.contractCustomer = e.target.value; renderModule2(); };
+
+  // 模块 3 筛选
+  document.getElementById('selOrderMonth').onchange = e => { STATE.orderMonth = e.target.value; renderModule3(); };
+  document.getElementById('selOrderBranch').onchange = e => { STATE.orderBranch = e.target.value; renderModule3(); };
+  document.getElementById('selOrderCustomer').onchange = e => { STATE.orderCustomer = e.target.value; renderModule3(); };
+
+  // 模块 4 筛选
+  document.getElementById('selProjectMonth').onchange = e => { STATE.projectMonth = e.target.value; renderModule4(); };
+  document.getElementById('selProjectBranch').onchange = e => { STATE.projectBranch = e.target.value; renderModule4(); };
+  document.querySelectorAll('#projScopeSeg button').forEach(b => b.onclick = () => {
+    STATE.projectScope = b.dataset.s;
+    document.querySelectorAll('#projScopeSeg button').forEach(btn => btn.classList.remove('on'));
+    b.classList.add('on');
+    renderModule4();
+  });
+
+  // 模块 5 筛选
+  document.getElementById('selDevDivision').onchange = e => { STATE.devDivision = e.target.value; renderModule5(); };
+
+  // 模块 6 筛选
+  document.getElementById('selPurchaseMonth').onchange = e => { STATE.purchaseMonth = e.target.value; renderModule6(); };
+  document.getElementById('selPurchaseBranch').onchange = e => { STATE.purchaseBranch = e.target.value; renderModule6(); };
+
+  // 模块 7 筛选
+  document.querySelectorAll('#compMetricSeg button').forEach(b => b.onclick = () => {
+    STATE.complaintMetric = b.dataset.m;
+    document.querySelectorAll('#compMetricSeg button').forEach(btn => btn.classList.remove('on'));
+    b.classList.add('on');
+    renderModule7();
+  });
+
+  // 导航点击平滑滚动
+  document.querySelectorAll('.nav-tab').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      const target = document.getElementById(btn.dataset.sec);
+      if (target) target.scrollIntoView({ behavior: 'smooth' });
+    };
+  });
+}
+
+/* ═══════════════ 模块 1 渲染函数 ═══════════════ */
+function renderModule1(months, rowsTrend, rowsPeriod, sm) {
+  const P = T();
+  const dByMonth = months.map(m => {
+    const rs = rowsTrend.filter(r => r.month === m);
+    return { m, ...summarizeSettlement(rs) };
+  });
+
+  // 图表 1：月度双轴复合图
+  document.getElementById('t1').textContent = `${STATE.item ? STATE.item + ' · ' : ''}月度营收与综合毛利率走势`;
+  document.getElementById('s1').textContent = `双轴对比 · 梯档柱 = 结算营收 (美元) · 发丝折线 = 综合毛利率 (%)`;
+  const s1 = document.getElementById('c1');
+  const maxRev = Math.max(...dByMonth.map(d => d.rev), 1);
+  const maxRate = Math.max(...dByMonth.map(d => d.margin), 15);
+  const n1 = dByMonth.length;
+  const colW1 = 560 / Math.max(n1, 1);
+  const barW1 = Math.min(colW1 * 0.46, 36);
+
+  // 网格虚线与 Y 轴刻度
+  for (let k = 0; k <= 4; k++) {
+    const y = 30 + k * 52;
+    el(s1, 'line', { x1: 65, y1: y, x2: 670, y2: y, stroke: P.GRID, 'stroke-width': 1, 'stroke-dasharray': '3,3' });
+    txt(s1, { x: 55, y: y + 3.5, 'font-size': 9, 'font-weight': 600, fill: P.MUT, 'text-anchor': 'end' }, '$' + fW(maxRev * (1 - k / 4)));
+    txt(s1, { x: 680, y: y + 3.5, 'font-size': 9, 'font-weight': 600, fill: P.HERO, 'text-anchor': 'start' }, (maxRate * (1 - k / 4)).toFixed(1) + '%');
+  }
+
+  // 梯档柱
+  dByMonth.forEach((d, i) => {
+    const x = 75 + i * colW1 + (colW1 - barW1) / 2;
+    const h = (d.rev / maxRev) * 208;
+    const y = 238 - h;
+    const isAct = STATE.period === d.m;
+    const g = el(s1, 'g', { class: 'hit' });
+    g.onclick = () => { STATE.period = isAct ? 'all' : d.m; STATE.animate = false; renderApp(); };
+
+    el(g, 'rect', { x, y, width: barW1, height: h, fill: isAct ? P.HERO : P.DATA, opacity: isAct ? 1 : 0.82, rx: 2 });
+    txt(g, { x: x + barW1 / 2, y: 256, 'font-size': 10, 'font-weight': isAct ? 800 : 600, fill: isAct ? P.HERO : P.TXT, 'text-anchor': 'middle' }, d.m.replace('2026-', '') + '月');
+    txt(g, { x: x + barW1 / 2, y: y - 6, 'font-size': 9, 'font-weight': 700, fill: P.TXT, 'text-anchor': 'middle' }, '$' + fW(d.rev));
+    tip(g, `${d.m}：营收 $${fW(d.rev)}，综合毛利率 ${d.margin.toFixed(2)}%，包干费率 ${d.shipPct.toFixed(2)}%`);
+  });
+
+  // 毛利率发丝折线
+  const pts = dByMonth.map((d, i) => {
+    const x = 75 + i * colW1 + colW1 / 2;
+    const y = 238 - (d.margin / maxRate) * 208;
+    return `${x},${y}`;
+  });
+  el(s1, 'polyline', { points: pts.join(' '), fill: 'none', stroke: P.HERO, 'stroke-width': INK_BOOST.stroke });
+  dByMonth.forEach((d, i) => {
+    const [x, y] = pts[i].split(',').map(Number);
+    el(s1, 'circle', { cx: x, cy: y, r: 4, fill: P.BG, stroke: P.HERO, 'stroke-width': 2 });
+    el(s1, 'circle', { cx: x, cy: y, r: 2, fill: P.HERO });
+    txt(s1, { x, y: y - 8, 'font-size': 8.5, 'font-weight': 800, fill: P.HERO, 'text-anchor': 'middle' }, d.margin.toFixed(1) + '%');
+  });
+
+  // 图表 2：Top 4 分公司 + 其余合并 100-Tick Donut
+  document.getElementById('t2').textContent = `分公司业务权重占比 (${STATE.bMetric === 'rev' ? '销售额' : '毛利额'})`;
+  document.getElementById('s2').textContent = `100-Tick Donut · 前 4 大分公司独立列出 · 其余合并`;
+  const s2 = document.getElementById('c2');
+  const bMap = groupBy(rowsPeriod, 'market');
+  const bAll = [...bMap.entries()].map(([k, rs]) => {
+    const smB = summarizeSettlement(rs);
+    return { name: k, val: STATE.bMetric === 'rev' ? smB.rev : smB.gp };
+  }).sort((a, b) => b.val - a.val);
+
+  const top4 = bAll.slice(0, 4);
+  const otherVal = sum(bAll.slice(4), i => i.val);
+  const bList = [...top4];
+  if (otherVal > 0) bList.push({ name: '其他分公司', val: otherVal });
+
+  const totalB = sum(bList, i => i.val) || 1;
+  const colors = P.CAT5;
+  let curTick = 0;
+  const groupsWithTicks = bList.map((g, idx) => {
+    const ticks = idx === bList.length - 1 ? (100 - curTick) : Math.round((g.val / totalB) * 100);
+    const startT = curTick;
+    curTick += ticks;
+    return { ...g, ticks, startT, color: colors[idx % colors.length], pct: (g.val / totalB * 100) };
+  });
+
+  const cx2 = 180, cy2 = 150, rIn = 72, rOut = 94;
+  for (let t = 0; t < 100; t++) {
+    const deg = -90 + t * 3.6;
+    const grp = groupsWithTicks.find(g => t >= g.startT && t < g.startT + g.ticks) || groupsWithTicks[groupsWithTicks.length - 1];
+    const [x1, y1] = pol(cx2, cy2, rIn, deg);
+    const [x2, y2] = pol(cx2, cy2, rOut, deg);
+    el(s2, 'line', { x1, y1, x2, y2, stroke: grp ? grp.color : P.FAINTDATA, 'stroke-width': 1.8 });
+  }
+  txt(s2, { x: cx2, y: cy2 - 4, 'font-size': 11, 'font-weight': 700, fill: P.MUT, 'text-anchor': 'middle' }, '前4分公司+其余');
+  txt(s2, { x: cx2, y: cy2 + 14, 'font-size': 14, 'font-weight': 800, fill: P.TXT, 'text-anchor': 'middle' }, '100 TICKS');
+
+  // 图例
+  groupsWithTicks.forEach((g, idx) => {
+    const y = 50 + idx * 28;
+    el(s2, 'rect', { x: 300, y: y - 8, width: 10, height: 10, fill: g.color, rx: 2 });
+    txt(s2, { x: 316, y, 'font-size': 10, 'font-weight': 600, fill: P.TXT }, g.name);
+    txt(s2, { x: 410, y, 'font-size': 10, 'font-weight': 800, fill: P.TXT, 'text-anchor': 'end' }, g.pct.toFixed(1) + '%');
+  });
+
+  // 图表 3：Top 10 排名分布
+  document.getElementById('t3').textContent = `Top 10 ${STATE.dim === 'customer' ? '客户' : STATE.dim === 'category' ? '品类' : '分公司'}排名`;
+  document.getElementById('s3').textContent = `1 Tick = 诚实单位 · 点击条形下钻`;
+  const s3 = document.getElementById('c3');
+  const dMap = groupBy(rowsPeriod, STATE.dim);
+  const dList = [...dMap.entries()].map(([k, rs]) => {
+    const smD = summarizeSettlement(rs);
+    return { name: k, val: STATE.metric === 'rev' ? smD.rev : smD.gp };
+  }).sort((a, b) => b.val - a.val).slice(0, 10);
+
+  const maxD = dList.length ? Math.max(...dList.map(i => i.val), 1) : 1;
+  const unit3 = nice(maxD / 25);
+  dList.forEach((it, idx) => {
+    const y = 30 + idx * 28;
+    const isSel = STATE.item === it.name;
+    const g = el(s3, 'g', { class: 'hit' });
+    g.onclick = () => { STATE.item = isSel ? null : it.name; STATE.animate = false; renderApp(); };
+
+    txt(g, { x: 100, y: y + 4, 'font-size': 10, 'font-weight': isSel ? 800 : 600, fill: isSel ? P.HERO : P.TXT, 'text-anchor': 'end' }, it.name);
+    const tickCount = Math.floor(it.val / unit3);
+    for (let k = 0; k < tickCount; k++) {
+      el(g, 'line', { x1: 110 + k * 8, y1: y + 6, x2: 110 + k * 8, y2: y - 6, stroke: isSel ? P.HERO : P.DATA, 'stroke-width': 1.6 });
+    }
+    txt(g, { x: 110 + tickCount * 8 + 8, y: y + 4, 'font-size': 9.5, 'font-weight': 700, fill: P.TXT }, '$' + fW(it.val));
+  });
+
+  // 图表 4：利润溯源瀑布图 (Waterfall Bridge)
+  document.getElementById('t4').textContent = `销售额到毛利的逐级因果溯源 (Waterfall Bridge)`;
+  document.getElementById('s4').textContent = `采购成本扣减 · 退税回补 · 包干费用 · 最终闭合到毛利`;
+  const s4 = document.getElementById('c4');
+  const grossRmb = sm.gross;
+  const purchaseRmb = sum(rowsPeriod, r => r.purchase);
+  const refundRmb = sum(rowsPeriod, r => r.refund);
+  const shipRmb = sm.ship;
+  const gpRmb = sm.gp;
+  const bridge = [
+    { label: '人民币营收', val: grossRmb, isTotal: true },
+    { label: '采购成本', val: -purchaseRmb },
+    { label: '退税回补', val: refundRmb },
+    { label: '包干费用', val: -shipRmb },
+    { label: '最终毛利', val: gpRmb, isTotal: true }
+  ];
+
+  const maxWf = grossRmb * 1.15;
+  const colW4 = 110, barW4 = 60, zeroY = 240;
+  let runY = 0;
+  bridge.forEach((step, idx) => {
+    const x = 80 + idx * 130;
+    let yBottom, yTop, color;
+    if (step.isTotal) {
+      yBottom = zeroY;
+      yTop = zeroY - (step.val / maxWf) * 200;
+      runY = step.val;
+      color = P.HERO;
+    } else {
+      const startV = runY;
+      runY += step.val;
+      yBottom = zeroY - (Math.min(startV, runY) / maxWf) * 200;
+      yTop = zeroY - (Math.max(startV, runY) / maxWf) * 200;
+      color = step.val >= 0 ? P.DATA : P.DATA2;
+    }
+    const h = Math.max(2, Math.abs(yBottom - yTop));
+    el(s4, 'rect', { x, y: yTop, width: barW4, height: h, fill: color, rx: 2 });
+    txt(s4, { x: x + barW4 / 2, y: zeroY + 18, 'font-size': 10, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'middle' }, step.label);
+    txt(s4, { x: x + barW4 / 2, y: yTop - 6, 'font-size': 9, 'font-weight': 700, fill: P.TXT, 'text-anchor': 'middle' }, (step.val > 0 && !step.isTotal ? '+' : '') + fW(step.val));
+  });
+}
+
+/* ═══════════════ 模块 2：外销合同出运及毛利跟踪 ═══════════════ */
+function renderModule2() {
+  const container = document.getElementById('contract-content');
+  const d = STATE.data.contracts;
+  const shipments = STATE.data.shipments;
+  if (!d.list.length) { container.innerHTML = `<div class="sub">无外销合同数据</div>`; return; }
+
+  // 1. 过滤数据
+  let filtered = d.list.filter(item => {
+    if (STATE.contractBranch !== 'all' && item.branch !== STATE.contractBranch) return false;
+    if (STATE.contractCustomer !== 'all' && item.customerId !== STATE.contractCustomer) return false;
+    return true;
+  });
+
+  // 月度筛选响应
+  if (STATE.contractMonth !== 'all') {
+    const tM = Number(STATE.contractMonth);
+    const matchC = new Set(shipments.list.filter(s => s.month === tM).map(s => s.contractNo));
+    filtered = filtered.filter(item => matchC.has(item.contractNo) || shipments.list.some(s => s.month === tM && (s.contractNo.includes(item.contractNo) || item.contractNo.includes(s.contractNo))));
+  }
+
+  const totalContractUsd = sum(filtered, i => i.totalAmount);
+  const totalShippedUsd = sum(filtered, i => i.shippedAmount);
+  const totalUnshippedUsd = sum(filtered, i => i.unshippedAmount);
+  const shipRate = totalContractUsd > 0 ? (totalShippedUsd / totalContractUsd * 100) : 0;
+  const actualProfitTotal = sum(filtered, i => i.actualProfit);
+  const profitDiffTotal = sum(filtered, i => i.profitDiff);
+
+  container.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="k">外销合同总额</div><div class="v">$${fW(totalContractUsd)}</div><div class="n">${filtered.length} 份筛选合同</div></div>
+      <div class="kpi"><div class="k">已出运总额</div><div class="v">$${fW(totalShippedUsd)}</div><div class="n">出运执行进度 ${shipRate.toFixed(1)}%</div></div>
+      <div class="kpi"><div class="k">未出运订单额</div><div class="v">$${fW(totalUnshippedUsd)}</div><div class="n">履约待执行池</div></div>
+      <div class="kpi"><div class="k">出运完成率</div><div class="v">${shipRate.toFixed(1)}<small>%</small></div><div class="n">按金额加权达成</div></div>
+      <div class="kpi"><div class="k">实际出运毛利</div><div class="v">¥${fW(actualProfitTotal)}</div><div class="n">折合人民币毛利</div></div>
+      <div class="kpi"><div class="k">毛利额偏差</div><div class="v">${profitDiffTotal >= 0 ? '+' : ''}¥${fW(profitDiffTotal)}</div><div class="n">${profitDiffTotal >= 0 ? '正向超额收益' : '负向利润侵蚀'}</div></div>
+    </div>
+    
+    <div class="grid2">
+      <!-- 图表A：合同出运进度对比 (按客户 / 按分公司) -->
+      <div class="card">
+        <div class="card-head">
+          <div><h3 id="t_prog">合同出运进度对比</h3><div class="sub">深色 = 已出运金额 · 浅色 = 待出运余额 (Top 10)</div></div>
+          <div class="seg" id="progDimSeg">
+            <button data-d="customer" class="${STATE.progressDim === 'customer' ? 'on' : ''}">按客户</button>
+            <button data-d="branch" class="${STATE.progressDim === 'branch' ? 'on' : ''}">按分公司</button>
+          </div>
+        </div>
+        <svg id="c_progress" viewBox="0 0 540 320"></svg>
+        <div class="src">STACKED RUNGS · 出运履约执行进度榜</div>
+      </div>
+
+      <!-- 图表B：毛利率预算 vs 出运毛利率对比 (按客户) -->
+      <div class="card">
+        <div class="card-head">
+          <div><h3>毛利率预算 vs 出运毛利率对比 (按客户)</h3><div class="sub">实线圈 = 预算毛利率 · 实心条 = 实际出运毛利率 · 按出运金额排序</div></div>
+        </div>
+        <svg id="c_cust_margin" viewBox="0 0 540 320"></svg>
+        <div class="src">DUMBBELL QUEUE · 客户毛利率偏差核算</div>
+      </div>
+
+      <!-- 图表C：毛利率预算 vs 出运毛利率对比 (Top 10 合同) -->
+      <div class="card">
+        <div class="card-head">
+          <div><h3>毛利率预算 vs 出运毛利率对比 (Top 10 合同)</h3><div class="sub">空心圈 = 预算毛利率 · 实心圈 = 出运实际毛利率 · 跨度即偏差幅度</div></div>
+        </div>
+        <svg id="c_dumbbell" viewBox="0 0 540 320"></svg>
+        <div class="src">DUMBBELL QUEUE · 重点合同毛利达成率对比</div>
+      </div>
+
+      <!-- 图表D：合同毛利偏差绝对值排行 (Top 10 合同) -->
+      <div class="card">
+        <div class="card-head">
+          <div><h3>合同毛利偏差绝对值排行 (Top 10 合同)</h3><div class="sub">深色 = 正向盈利超预期 · 浅色 = 负向毛利损耗 (RMB)</div></div>
+        </div>
+        <svg id="c_profit_diff" viewBox="0 0 540 320"></svg>
+        <div class="src">DEVIATION BARS · 合同毛利偏差排序</div>
+      </div>
+    </div>`;
+
+  const P = T();
+
+  // 绑定按客户/分公司切换
+  document.querySelectorAll('#progDimSeg button').forEach(b => b.onclick = () => {
+    STATE.progressDim = b.dataset.d;
+    renderModule2();
+  });
+
+  // 1. 图表A：合同出运进度对比
+  const sProg = document.getElementById('c_progress');
+  const dimK = STATE.progressDim === 'customer' ? 'customerId' : 'branch';
+  const progGrouped = [...groupBy(filtered, dimK)].map(([name, rs]) => ({
+    name,
+    shipped: sum(rs, r => r.shippedAmount),
+    unshipped: sum(rs, r => r.unshippedAmount),
+    total: sum(rs, r => r.totalAmount)
+  })).sort((a, b) => b.total - a.total).slice(0, 10);
+
+  const maxProg = progGrouped.length ? Math.max(...progGrouped.map(i => i.total), 1) : 1;
+  progGrouped.forEach((it, idx) => {
+    const y = 28 + idx * 28;
+    txt(sProg, { x: 105, y: y + 4, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'end' }, it.name);
+    const shipW = (it.shipped / maxProg) * 310;
+    const unshipW = (it.unshipped / maxProg) * 310;
+    el(sProg, 'rect', { x: 115, y: y - 7, width: shipW, height: 14, fill: P.HERO, rx: 2 });
+    el(sProg, 'rect', { x: 115 + shipW, y: y - 7, width: unshipW, height: 14, fill: P.FAINTDATA, rx: 2 });
+    txt(sProg, { x: 115 + shipW + unshipW + 8, y: y + 4, 'font-size': 9, 'font-weight': 700, fill: P.TXT }, '$' + fW(it.total));
+  });
+
+  // 2. 图表B：毛利率预算 vs 出运毛利率 (按客户)
+  const sCustM = document.getElementById('c_cust_margin');
+  const custGrouped = [...groupBy(filtered, 'customerId')].map(([cId, rs]) => {
+    const totalRmb = sum(rs, r => r.totalAmountRmb);
+    const bProfit = sum(rs, r => r.budgetProfit);
+    const sRmb = sum(rs, r => r.shippedAmount * 6.6);
+    const actProfit = sum(rs, r => r.actualProfit);
+    const bMargin = totalRmb > 0 ? (bProfit / totalRmb) : 0;
+    const sMargin = sRmb > 0 ? (actProfit / sRmb) : 0;
+    return { customerId: cId, bMargin, sMargin, sRmb };
+  }).filter(i => i.sRmb > 0).sort((a, b) => b.sRmb - a.sRmb).slice(0, 10);
+
+  const maxCustMargin = custGrouped.length ? Math.max(...custGrouped.flatMap(i => [i.bMargin, i.sMargin]), 0.25) : 0.25;
+  custGrouped.forEach((it, idx) => {
+    const y = 28 + idx * 28;
+    txt(sCustM, { x: 105, y: y + 4, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'end' }, it.customerId);
+    const x0 = 115;
+    const xB = x0 + (it.bMargin / maxCustMargin) * 310;
+    const xS = x0 + (it.sMargin / maxCustMargin) * 310;
+    el(sCustM, 'line', { x1: Math.min(xB, xS), y1: y, x2: Math.max(xB, xS), y2: y, stroke: P.GRID, 'stroke-width': 1.6 });
+    el(sCustM, 'circle', { cx: xB, cy: y, r: 4.5, fill: P.BG, stroke: P.DATA2, 'stroke-width': 1.8 });
+    el(sCustM, 'circle', { cx: xS, cy: y, r: 4.5, fill: P.HERO });
+    txt(sCustM, { x: Math.max(xB, xS) + 12, y: y + 3.5, 'font-size': 9, 'font-weight': 700, fill: P.TXT }, `${(it.sMargin * 100).toFixed(1)}% (预${(it.bMargin * 100).toFixed(1)}%)`);
+  });
+
+  // 3. 图表C：Top 10 合同毛利率哑铃图
+  const sDb = document.getElementById('c_dumbbell');
+  const validC = filtered.filter(i => i.shippedMargin !== null).sort((a, b) => b.totalAmount - a.totalAmount).slice(0, 10);
+  if (validC.length) {
+    const allM = validC.flatMap(c => [c.budgetMargin, c.shippedMargin]);
+    const minM = Math.min(...allM, 0) - 0.04;
+    const maxM = Math.max(...allM, 0.25) + 0.04;
+    const scaleX = m => 175 + ((m - minM) / (maxM - minM)) * 310;
+
+    validC.forEach((c, idx) => {
+      const y = 28 + idx * 28;
+      txt(sDb, { x: 165, y: y + 4, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'end' }, c.contractNo);
+      const xB = scaleX(c.budgetMargin), xS = scaleX(c.shippedMargin);
+      el(sDb, 'line', { x1: Math.min(xB, xS), y1: y, x2: Math.max(xB, xS), y2: y, stroke: P.GRID, 'stroke-width': 1.6 });
+      el(sDb, 'circle', { cx: xB, cy: y, r: 4.5, fill: P.BG, stroke: P.DATA2, 'stroke-width': 1.8 });
+      el(sDb, 'circle', { cx: xS, cy: y, r: 4.5, fill: P.HERO });
+      txt(sDb, { x: Math.max(xB, xS) + 10, y: y + 3.5, 'font-size': 9, 'font-weight': 700, fill: P.TXT }, `${(c.shippedMargin * 100).toFixed(1)}%`);
+    });
+  }
+
+  // 4. 图表D：合同毛利偏差绝对值排行
+  const sDiff = document.getElementById('c_profit_diff');
+  const diffList = [...filtered.filter(c => c.isShipped)].sort((a, b) => Math.abs(b.profitDiff) - Math.abs(a.profitDiff)).slice(0, 10);
+  const maxDiff = diffList.length ? Math.max(...diffList.map(i => Math.abs(i.profitDiff)), 1) : 1;
+  diffList.forEach((it, idx) => {
+    const y = 28 + idx * 28;
+    txt(sDiff, { x: 140, y: y + 4, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'end' }, it.contractNo);
+    const w = (Math.abs(it.profitDiff) / maxDiff) * 280;
+    const isPos = it.profitDiff >= 0;
+    el(sDiff, 'rect', { x: 150, y: y - 7, width: w, height: 14, fill: isPos ? P.HERO : P.DATA2, rx: 2 });
+    txt(sDiff, { x: 150 + w + 8, y: y + 4, 'font-size': 9, 'font-weight': 700, fill: P.TXT }, (isPos ? '+' : '') + '¥' + fW(it.profitDiff));
+  });
+}
+
+/* ═══════════════ 模块 3：外销下单分析与交付节奏 ═══════════════ */
+function renderModule3() {
+  const container = document.getElementById('order-content');
+  const d = STATE.data.contracts;
+  const purchases = STATE.data.purchases;
+  if (!d.list.length) { container.innerHTML = `<div class="sub">无外销下单数据</div>`; return; }
+
+  // 筛选过滤
+  const filtered = d.list.filter(item => {
+    if (STATE.orderBranch !== 'all' && item.branch !== STATE.orderBranch) return false;
+    if (STATE.orderCustomer !== 'all' && item.customerId !== STATE.orderCustomer) return false;
+    if (STATE.orderMonth !== 'all' && item.orderMonth !== STATE.orderMonth) return false;
+    return true;
+  });
+
+  const totalAmt = sum(filtered, i => i.totalAmount);
+  const totalProfit = sum(filtered, i => i.actualProfit);
+  const totalAmtRmb = sum(filtered, i => i.totalAmountRmb);
+  const avgMargin = totalAmtRmb > 0 ? (totalProfit / totalAmtRmb * 100) : 0;
+
+  container.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="k">总结下单金额</div><div class="v">$${fW(totalAmt)}</div><div class="n">${filtered.length} 笔筛选下单</div></div>
+      <div class="kpi"><div class="k">下单毛利额</div><div class="v">¥${fW(totalProfit)}</div><div class="n">折合人民币利润</div></div>
+      <div class="kpi"><div class="k">下单毛利率</div><div class="v">${avgMargin.toFixed(2)}<small>%</small></div><div class="n">整体加权毛利率</div></div>
+    </div>
+    
+    <div class="grid2">
+      <!-- 图表1：下单月度金额及毛利走势 -->
+      <div class="card">
+        <div class="card-head"><div><h3>下单月度金额及毛利趋势</h3><div class="sub">梯档柱 = 下单金额 (USD) · 发丝折线 = 下单毛利 (RMB)</div></div></div>
+        <svg id="c_ord_trend" viewBox="0 0 540 280"></svg>
+        <div class="src">RUNG BARS & LINE · 下单月度趋势</div>
+      </div>
+
+      <!-- 图表2：预计交付月度金额分布 -->
+      <div class="card">
+        <div class="card-head"><div><h3>预计交付月度金额趋势</h3><div class="sub">按预计交付月份统计的履约货值规模</div></div></div>
+        <svg id="c_deliv_trend" viewBox="0 0 540 280"></svg>
+        <div class="src">HAIRLINE AREA · 履约交期波峰统计</div>
+      </div>
+
+      <!-- 图表3：按客户维度的下单额占比 -->
+      <div class="card">
+        <div class="card-head"><div><h3>按客户维度的下单额占比</h3><div class="sub">100-Tick Donut · 客户货值份额占比</div></div></div>
+        <svg id="c_ord_cust_amt" viewBox="0 0 540 280"></svg>
+        <div class="src">TICK DONUT · 客户下单额权重</div>
+      </div>
+
+      <!-- 图表4：按客户维度的毛利额占比 -->
+      <div class="card">
+        <div class="card-head"><div><h3>按客户维度的毛利额占比</h3><div class="sub">100-Tick Donut · 客户毛利贡献度</div></div></div>
+        <svg id="c_ord_cust_gp" viewBox="0 0 540 280"></svg>
+        <div class="src">TICK DONUT · 客户利润贡献结构</div>
+      </div>
+
+      <!-- 图表5：按产品分类的下单占比 (前12类标签) -->
+      <div class="card">
+        <div class="card-head"><div><h3>按产品分类的下单占比 (前12类显示标签)</h3><div class="sub">采购合同换算品类 · USD 采购货值占比 (除以 6.6)</div></div></div>
+        <svg id="c_ord_cat" viewBox="0 0 540 300"></svg>
+        <div class="src">TICK ROWS · 前 12 大品类采购下单</div>
+      </div>
+
+      <!-- 图表6：按分公司维度的下单占比 -->
+      <div class="card">
+        <div class="card-head"><div><h3>按分公司维度的下单占比</h3><div class="sub">分公司下单货值结构占比</div></div></div>
+        <svg id="c_ord_branch" viewBox="0 0 540 300"></svg>
+        <div class="src">TICK ROWS · 分公司下单贡献榜</div>
+      </div>
+    </div>`;
+
+  const P = T();
+
+  // 1. 图表1：下单月度金额及毛利趋势
+  const sOrdTr = document.getElementById('c_ord_trend');
+  const trMonths = d.orderMonths;
+  const trData = trMonths.map(m => {
+    const rs = d.list.filter(i => i.orderMonth === m && (STATE.orderBranch === 'all' || i.branch === STATE.orderBranch) && (STATE.orderCustomer === 'all' || i.customerId === STATE.orderCustomer));
+    return { m, amt: sum(rs, r => r.totalAmount), gp: sum(rs, r => r.actualProfit) };
+  });
+  if (trData.length) {
+    const maxA = Math.max(...trData.map(i => i.amt), 1);
+    const maxG = Math.max(...trData.map(i => i.gp), 1);
+    const n = trData.length, colW = 420 / Math.max(n, 1), barW = Math.min(colW * 0.45, 28);
+    trData.forEach((it, i) => {
+      const x = 50 + i * colW + (colW - barW) / 2;
+      const h = (it.amt / maxA) * 160;
+      el(sOrdTr, 'rect', { x, y: 200 - h, width: barW, height: h, fill: P.DATA, opacity: 0.85, rx: 2 });
+      txt(sOrdTr, { x: x + barW / 2, y: 220, 'font-size': 9, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'middle' }, it.m.replace('2026-', '') + '月');
+    });
+    const pts = trData.map((it, i) => `${50 + i * colW + colW / 2},${200 - (it.gp / maxG) * 160}`);
+    el(sOrdTr, 'polyline', { points: pts.join(' '), fill: 'none', stroke: P.HERO, 'stroke-width': 1.8 });
+    trData.forEach((it, i) => {
+      const [x, y] = pts[i].split(',').map(Number);
+      el(sOrdTr, 'circle', { cx: x, cy: y, r: 3.5, fill: P.BG, stroke: P.HERO, 'stroke-width': 1.6 });
+      txt(sOrdTr, { x, y: y - 6, 'font-size': 8.5, 'font-weight': 700, fill: P.HERO, 'text-anchor': 'middle' }, '¥' + fW(it.gp));
+    });
+  }
+
+  // 2. 图表2：预计交付月度金额分布
+  const sDeliv = document.getElementById('c_deliv_trend');
+  const dMonths = d.deliveryMonths;
+  const dData = dMonths.map(m => {
+    const rs = filtered.filter(i => i.deliveryMonth === m);
+    return { m, amt: sum(rs, r => r.totalAmount) };
+  });
+  if (dData.length) {
+    const maxD = Math.max(...dData.map(i => i.amt), 1);
+    const n = dData.length, stepX = 400 / Math.max(1, n - 1);
+    const pts = dData.map((it, i) => `${60 + i * stepX},${190 - (it.amt / maxD) * 130}`).join(' L ');
+    el(sDeliv, 'path', { d: `M 60,190 L ${pts} L ${60 + (n - 1) * stepX},190 Z`, fill: P.FAINTDATA, opacity: 0.45 });
+    el(sDeliv, 'path', { d: 'M ' + pts, fill: 'none', stroke: P.HERO, 'stroke-width': 1.8 });
+    dData.forEach((it, i) => {
+      const x = 60 + i * stepX, y = 190 - (it.amt / maxD) * 130;
+      el(sDeliv, 'circle', { cx: x, cy: y, r: 3.5, fill: P.BG, stroke: P.HERO, 'stroke-width': 1.6 });
+      txt(sDeliv, { x, y: y - 7, 'font-size': 8.5, 'font-weight': 700, fill: P.TXT, 'text-anchor': 'middle' }, '$' + fW(it.amt));
+      txt(sDeliv, { x, y: 210, 'font-size': 9, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'middle' }, it.m.replace('2026-', '') + '月');
+    });
+  }
+
+  // 辅助 Donut 渲染器
+  function renderMiniDonut(svgId, list, valFn) {
+    const s = document.getElementById(svgId);
+    const grouped = list.sort((a, b) => valFn(b) - valFn(a));
+    const top4 = grouped.slice(0, 4);
+    const otherVal = sum(grouped.slice(4), valFn);
+    const rows = [...top4];
+    if (otherVal > 0) rows.push({ name: '其他客户', other: true, val: otherVal });
+
+    const tot = sum(rows, i => i.other ? i.val : valFn(i)) || 1;
+    let curT = 0;
+    const gTicks = rows.map((g, idx) => {
+      const val = g.other ? g.val : valFn(g);
+      const ticks = idx === rows.length - 1 ? (100 - curT) : Math.round((val / tot) * 100);
+      const st = curT; curT += ticks;
+      return { name: g.customerId || g.name, val, pct: val / tot * 100, ticks, st, color: P.CAT5[idx % P.CAT5.length] };
+    });
+
+    const cx = 130, cy = 130, rIn = 58, rOut = 78;
+    for (let t = 0; t < 100; t++) {
+      const deg = -90 + t * 3.6;
+      const grp = gTicks.find(g => t >= g.st && t < g.st + g.ticks) || gTicks[gTicks.length - 1];
+      const [x1, y1] = pol(cx, cy, rIn, deg);
+      const [x2, y2] = pol(cx, cy, rOut, deg);
+      el(s, 'line', { x1, y1, x2, y2, stroke: grp ? grp.color : P.FAINTDATA, 'stroke-width': 1.6 });
+    }
+    txt(s, { x: cx, y: cy + 4, 'font-size': 11, 'font-weight': 800, fill: P.TXT, 'text-anchor': 'middle' }, '100 TICKS');
+
+    gTicks.forEach((g, idx) => {
+      const y = 50 + idx * 26;
+      el(s, 'rect', { x: 235, y: y - 7, width: 9, height: 9, fill: g.color, rx: 2 });
+      txt(s, { x: 250, y, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT }, g.name);
+      txt(s, { x: 500, y, 'font-size': 9.5, 'font-weight': 800, fill: P.TXT, 'text-anchor': 'end' }, g.pct.toFixed(1) + '%');
+    });
+  }
+
+  // 3. 图表3：按客户下单额占比
+  const custAmtList = [...groupBy(filtered, 'customerId')].map(([c, rs]) => ({ customerId: c, totalAmount: sum(rs, r => r.totalAmount) }));
+  renderMiniDonut('c_ord_cust_amt', custAmtList, i => i.totalAmount);
+
+  // 4. 图表4：按客户毛利额占比
+  const custGpList = [...groupBy(filtered, 'customerId')].map(([c, rs]) => ({ customerId: c, actualProfit: sum(rs, r => r.actualProfit) }));
+  renderMiniDonut('c_ord_cust_gp', custGpList, i => i.actualProfit);
+
+  // 5. 图表5：按产品分类下单占比 (前12类)
+  const sCat = document.getElementById('c_ord_cat');
+  const catList = [...groupBy(purchases.list, 'category')].map(([cat, rs]) => ({
+    cat, amt: sum(rs, r => r.amount) / 6.6
+  })).sort((a, b) => b.amt - a.amt).slice(0, 12);
+  const maxCat = catList.length ? Math.max(...catList.map(i => i.amt), 1) : 1;
+  catList.forEach((it, idx) => {
+    const y = 24 + idx * 22;
+    txt(sCat, { x: 120, y: y + 3, 'font-size': 9, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'end' }, it.cat);
+    const w = (it.amt / maxCat) * 310;
+    el(sCat, 'rect', { x: 130, y: y - 6, width: w, height: 11, fill: P.HERO, rx: 2 });
+    txt(sCat, { x: 130 + w + 6, y: y + 3, 'font-size': 8.5, 'font-weight': 700, fill: P.TXT }, '$' + fW(it.amt));
+  });
+
+  // 6. 图表6：按分公司下单占比
+  const sBranch = document.getElementById('c_ord_branch');
+  const brList = [...groupBy(filtered, 'branch')].map(([br, rs]) => ({
+    branch: br, amt: sum(rs, r => r.totalAmount)
+  })).sort((a, b) => b.amt - a.amt);
+  const maxBr = brList.length ? Math.max(...brList.map(i => i.amt), 1) : 1;
+  brList.forEach((it, idx) => {
+    const y = 28 + idx * 26;
+    txt(sBranch, { x: 120, y: y + 3.5, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'end' }, it.branch);
+    const w = (it.amt / maxBr) * 310;
+    el(sBranch, 'rect', { x: 130, y: y - 7, width: w, height: 13, fill: P.DATA, rx: 2 });
+    txt(sBranch, { x: 130 + w + 8, y: y + 3.5, 'font-size': 9, 'font-weight': 700, fill: P.TXT }, '$' + fW(it.amt));
+  });
+}
+
+/* ═══════════════ 模块 4：客户项目与下单预测追踪 ═══════════════ */
+function renderModule4() {
+  const container = document.getElementById('project-content');
+  const d = STATE.data.projects;
+  if (!d.list.length) { container.innerHTML = `<div class="sub">无客户项目数据</div>`; return; }
+
+  // 1. 筛选过滤
+  const monthFiltered = d.list.filter(item => {
+    if (STATE.projectMonth !== 'all' && item.expectedMonth !== STATE.projectMonth) return false;
+    return true;
+  });
+  const scopeFiltered = monthFiltered.filter(item => {
+    if (STATE.projectScope === 'likely' && item.predict !== '可能下单') return false;
+    if (STATE.projectBranch !== 'all' && item.branch !== STATE.projectBranch) return false;
+    return true;
+  });
+
+  const totalProjectAmount = sum(monthFiltered, i => i.amountUsd);
+  const likelyAmount = sum(monthFiltered.filter(i => i.predict === '可能下单'), i => i.amountUsd);
+  const selectedScopeAmount = sum(scopeFiltered, i => i.amountUsd);
+  const ratio = totalProjectAmount > 0 ? (likelyAmount / totalProjectAmount * 100) : 0;
+
+  container.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="k">整体项目总金额</div><div class="v">$${fW(totalProjectAmount)}</div><div class="n">商机管线总储备</div></div>
+      <div class="kpi"><div class="k">${STATE.projectScope === 'likely' ? '预计可能下单金额' : '筛选范围项目总额'}</div><div class="v">$${fW(selectedScopeAmount)}</div><div class="n">${scopeFiltered.length} 个在跟商机</div></div>
+      <div class="kpi"><div class="k">可能下单金额占比</div><div class="v">${ratio.toFixed(1)}<small>%</small></div><div class="n">商机高确定性转化率</div></div>
+    </div>
+    
+    <div class="grid2">
+      <!-- 图表1：按客户项目维度金额占比 -->
+      <div class="card">
+        <div class="card-head"><div><h3>按客户项目维度金额占比</h3><div class="sub">${STATE.projectScope === 'likely' ? 'USD 预计可下单金额占比' : 'USD 总项目金额占比'}</div></div></div>
+        <svg id="c_proj_cust" viewBox="0 0 540 280"></svg>
+        <div class="src">TICK DONUT · 客户商机金额权重</div>
+      </div>
+
+      <!-- 图表2：按三级目录维度项目占比 (Top 10) -->
+      <div class="card">
+        <div class="card-head"><div><h3>按三级目录维度项目占比 (Top 10)</h3><div class="sub">100-Tick Donut · 前 10 大三级品类 + 其余</div></div></div>
+        <svg id="c_proj_cat_pie" viewBox="0 0 540 280"></svg>
+        <div class="src">TICK DONUT · 品类储备结构分布</div>
+      </div>
+
+      <!-- 图表3：按客户维度的月度下单预测趋势图 -->
+      <div class="card wide">
+        <div class="card-head"><div><h3>按客户维度的月度下单预测趋势图</h3><div class="sub">各主要客户在未来预计下单月份的金额分布折线图 (万美元)</div></div></div>
+        <svg id="c_proj_trend" viewBox="0 0 1100 320"></svg>
+        <div class="src">MULTIPLE LINES · 客户商机未来月份下单节奏</div>
+      </div>
+    </div>`;
+
+  const P = T();
+
+  // 1. 图表1：按客户项目维度金额占比 Donut
+  const sCust = document.getElementById('c_proj_cust');
+  const custGroup = [...groupBy(scopeFiltered, 'customerId')].map(([c, rs]) => ({
+    name: c, val: sum(rs, r => r.amountUsd)
+  })).sort((a, b) => b.val - a.val);
+
+  const topCust = custGroup.slice(0, 4);
+  const otherCustVal = sum(custGroup.slice(4), i => i.val);
+  const rowsC = [...topCust];
+  if (otherCustVal > 0) rowsC.push({ name: '其他客户', val: otherCustVal });
+
+  const totC = sum(rowsC, i => i.val) || 1;
+  let curTC = 0;
+  const gTicksC = rowsC.map((g, idx) => {
+    const ticks = idx === rowsC.length - 1 ? (100 - curTC) : Math.round((g.val / totC) * 100);
+    const st = curTC; curTC += ticks;
+    return { name: g.name, val: g.val, pct: g.val / totC * 100, ticks, st, color: P.CAT5[idx % P.CAT5.length] };
+  });
+
+  const cxC = 130, cyC = 130, rInC = 58, rOutC = 78;
+  for (let t = 0; t < 100; t++) {
+    const deg = -90 + t * 3.6;
+    const grp = gTicksC.find(g => t >= g.st && t < g.st + g.ticks) || gTicksC[gTicksC.length - 1];
+    const [x1, y1] = pol(cxC, cyC, rInC, deg);
+    const [x2, y2] = pol(cxC, cyC, rOutC, deg);
+    el(sCust, 'line', { x1, y1, x2, y2, stroke: grp ? grp.color : P.FAINTDATA, 'stroke-width': 1.6 });
+  }
+  txt(sCust, { x: cxC, y: cyC + 4, 'font-size': 11, 'font-weight': 800, fill: P.TXT, 'text-anchor': 'middle' }, '100 TICKS');
+  gTicksC.forEach((g, idx) => {
+    const y = 50 + idx * 26;
+    el(sCust, 'rect', { x: 235, y: y - 7, width: 9, height: 9, fill: g.color, rx: 2 });
+    txt(sCust, { x: 250, y, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT }, g.name);
+    txt(sCust, { x: 500, y, 'font-size': 9.5, 'font-weight': 800, fill: P.TXT, 'text-anchor': 'end' }, g.pct.toFixed(1) + '%');
+  });
+
+  // 2. 图表2：按三级目录维度项目占比 Donut (Top 10)
+  const sCatPie = document.getElementById('c_proj_cat_pie');
+  const catGroup = [...groupBy(scopeFiltered, 'categoryL3')].map(([cat, rs]) => ({
+    name: cat, val: sum(rs, r => r.amountUsd)
+  })).sort((a, b) => b.val - a.val);
+
+  const top10Cat = catGroup.slice(0, 5);
+  const otherCatVal = sum(catGroup.slice(5), i => i.val);
+  const rowsCat = [...top10Cat];
+  if (otherCatVal > 0) rowsCat.push({ name: '其他品类', val: otherCatVal });
+
+  const totCat = sum(rowsCat, i => i.val) || 1;
+  let curTCat = 0;
+  const gTicksCat = rowsCat.map((g, idx) => {
+    const ticks = idx === rowsCat.length - 1 ? (100 - curTCat) : Math.round((g.val / totCat) * 100);
+    const st = curTCat; curTCat += ticks;
+    return { name: g.name, val: g.val, pct: g.val / totCat * 100, ticks, st, color: P.CAT5[idx % P.CAT5.length] };
+  });
+
+  for (let t = 0; t < 100; t++) {
+    const deg = -90 + t * 3.6;
+    const grp = gTicksCat.find(g => t >= g.st && t < g.st + g.ticks) || gTicksCat[gTicksCat.length - 1];
+    const [x1, y1] = pol(cxC, cyC, rInC, deg);
+    const [x2, y2] = pol(cxC, cyC, rOutC, deg);
+    el(sCatPie, 'line', { x1, y1, x2, y2, stroke: grp ? grp.color : P.FAINTDATA, 'stroke-width': 1.6 });
+  }
+  txt(sCatPie, { x: cxC, y: cyC + 4, 'font-size': 11, 'font-weight': 800, fill: P.TXT, 'text-anchor': 'middle' }, '100 TICKS');
+  gTicksCat.forEach((g, idx) => {
+    const y = 45 + idx * 25;
+    el(sCatPie, 'rect', { x: 235, y: y - 7, width: 9, height: 9, fill: g.color, rx: 2 });
+    txt(sCatPie, { x: 250, y, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT }, g.name);
+    txt(sCatPie, { x: 500, y, 'font-size': 9.5, 'font-weight': 800, fill: P.TXT, 'text-anchor': 'end' }, g.pct.toFixed(1) + '%');
+  });
+
+  // 3. 图表3：月度下单预测趋势图
+  const sTrend = document.getElementById('c_proj_trend');
+  const allMonths = d.months;
+  const topCustomers = [...groupBy(scopeFiltered, 'customerId')].map(([c, rs]) => ({
+    name: c, amt: sum(rs, r => r.amountUsd)
+  })).sort((a, b) => b.amt - a.amt).slice(0, 5);
+
+  if (allMonths.length && topCustomers.length) {
+    const maxVal = Math.max(...topCustomers.flatMap(c => allMonths.map(m => sum(scopeFiltered.filter(i => i.customerId === c.name && i.expectedMonth === m), r => r.amountUsd))), 10000);
+    const n = allMonths.length;
+    const stepX = 900 / Math.max(1, n - 1);
+
+    // X轴标签
+    allMonths.forEach((m, idx) => {
+      const x = 70 + idx * stepX;
+      txt(sTrend, { x, y: 270, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'middle' }, m);
+      el(sTrend, 'line', { x1: x, y1: 30, x2: x, y2: 250, stroke: P.GRID, 'stroke-width': 1, 'stroke-dasharray': '3,3' });
+    });
+
+    topCustomers.forEach((cust, cIdx) => {
+      const color = P.CAT5[cIdx % P.CAT5.length];
+      const pts = allMonths.map((m, mIdx) => {
+        const val = sum(scopeFiltered.filter(i => i.customerId === cust.name && i.expectedMonth === m), r => r.amountUsd);
+        const x = 70 + mIdx * stepX;
+        const y = 250 - (val / maxVal) * 210;
+        return `${x},${y}`;
+      });
+      el(sTrend, 'polyline', { points: pts.join(' '), fill: 'none', stroke: color, 'stroke-width': 2 });
+      allMonths.forEach((m, mIdx) => {
+        const [x, y] = pts[mIdx].split(',').map(Number);
+        const val = sum(scopeFiltered.filter(i => i.customerId === cust.name && i.expectedMonth === m), r => r.amountUsd);
+        if (val > 0) {
+          el(sTrend, 'circle', { cx: x, cy: y, r: 4, fill: P.BG, stroke: color, 'stroke-width': 2 });
+          txt(sTrend, { x, y: y - 7, 'font-size': 8.5, 'font-weight': 700, fill: color, 'text-anchor': 'middle' }, '$' + fW(val));
+        }
+      });
+
+      // 图例
+      const legX = 70 + cIdx * 190;
+      el(sTrend, 'rect', { x: legX, y: 12, width: 10, height: 10, fill: color, rx: 2 });
+      txt(sTrend, { x: legX + 16, y: 21, 'font-size': 10, 'font-weight': 700, fill: P.TXT }, cust.name);
+    });
+  }
+}
+
+/* ═══════════════ 模块 5：产品开发目标与进度分析 ═══════════════ */
+function renderModule5() {
+  const container = document.getElementById('dev-content');
+  const d = STATE.data.dev;
+  if (!d.list.length) { container.innerHTML = `<div class="sub">无产品开发数据</div>`; return; }
+
+  const filtered = d.list.filter(item => {
+    if (STATE.devDivision !== 'all' && item.division !== STATE.devDivision) return false;
+    return true;
+  });
+
+  const byInd = [...groupBy(filtered, 'indicator')].map(([ind, rs]) => {
+    const tgt = sum(rs, r => r.target);
+    const act = sum(rs, r => r.actual);
+    return { ind, tgt, act, rate: tgt > 0 ? (act / tgt * 100) : 100 };
+  });
+
+  container.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="k">监控指标数</div><div class="v">${byInd.length}</div><div class="n">MDS、展厅实样、样册等</div></div>
+      <div class="kpi"><div class="k">MDS录入总达成</div><div class="v">${sum(filtered.filter(i => i.indicator.includes('MDS')), i => i.actual)}</div><div class="n">SPU 产品立项录入</div></div>
+      <div class="kpi"><div class="k">展厅实样入库</div><div class="v">${sum(filtered.filter(i => i.indicator.includes('展厅') || i.indicator.includes('实样')), i => i.actual)}</div><div class="n">实样入库推进总数</div></div>
+    </div>
+    
+    <div class="grid2">
+      <!-- 图表1：每月指标目标达成率对比 -->
+      <div class="card">
+        <div class="card-head"><div><h3>每月指标目标达成率对比</h3><div class="sub">核心开发考核指标综合达成率 (%)</div></div></div>
+        <svg id="c_dev_rate" viewBox="0 0 540 280"></svg>
+        <div class="src">TICK ROWS · 关键指标达成率</div>
+      </div>
+
+      <!-- 图表2：开发指标月度实际走势 -->
+      <div class="card">
+        <div class="card-head"><div><h3>开发指标月度实际走势</h3><div class="sub">月度实际完成数量推移走势</div></div></div>
+        <svg id="c_dev_trend" viewBox="0 0 540 280"></svg>
+        <div class="src">HAIRLINE LINES · 研发任务月度走势</div>
+      </div>
+    </div>`;
+
+  const P = T();
+
+  // 1. 图表1：达成率
+  const sRate = document.getElementById('c_dev_rate');
+  byInd.forEach((it, idx) => {
+    const y = 35 + idx * 36;
+    txt(sRate, { x: 130, y: y + 4, 'font-size': 10, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'end' }, it.ind);
+    const w = Math.min((it.rate / 150) * 300, 300);
+    el(sRate, 'rect', { x: 140, y: y - 8, width: 300, height: 16, fill: P.GRID, rx: 2 });
+    el(sRate, 'rect', { x: 140, y: y - 8, width: w, height: 16, fill: it.rate >= 100 ? P.HERO : P.DATA, rx: 2 });
+    txt(sRate, { x: 450, y: y + 4, 'font-size': 10, 'font-weight': 800, fill: P.TXT }, it.rate.toFixed(1) + '%');
+  });
+
+  // 2. 图表2：走势图
+  const sTrend = document.getElementById('c_dev_trend');
+  const months = d.months;
+  if (months.length) {
+    const maxAct = Math.max(...d.indicators.flatMap(ind => months.map(m => sum(filtered.filter(i => i.indicator === ind && i.month === m), r => r.actual))), 10);
+    const n = months.length, stepX = 400 / Math.max(1, n - 1);
+
+    months.forEach((m, idx) => {
+      const x = 60 + idx * stepX;
+      txt(sTrend, { x, y: 240, 'font-size': 9, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'middle' }, m);
+    });
+
+    d.indicators.forEach((ind, iIdx) => {
+      const color = P.CAT5[iIdx % P.CAT5.length];
+      const pts = months.map((m, mIdx) => {
+        const val = sum(filtered.filter(i => i.indicator === ind && i.month === m), r => r.actual);
+        const x = 60 + mIdx * stepX;
+        const y = 220 - (val / maxAct) * 170;
+        return `${x},${y}`;
+      });
+      el(sTrend, 'polyline', { points: pts.join(' '), fill: 'none', stroke: color, 'stroke-width': 1.8 });
+      months.forEach((m, mIdx) => {
+        const [x, y] = pts[mIdx].split(',').map(Number);
+        el(sTrend, 'circle', { cx: x, cy: y, r: 3, fill: color });
+      });
+
+      // 图例
+      const legX = 60 + iIdx * 150;
+      el(sTrend, 'rect', { x: legX, y: 15, width: 8, height: 8, fill: color, rx: 2 });
+      txt(sTrend, { x: legX + 14, y: 22, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT }, ind);
+    });
+  }
+}
+
+/* ═══════════════ 模块 6：采购合同与结算方式分析 ═══════════════ */
+function renderModule6() {
+  const container = document.getElementById('purchase-content');
+  const d = STATE.data.purchases;
+  if (!d.list.length) { container.innerHTML = `<div class="sub">无采购合同数据</div>`; return; }
+
+  const filtered = d.list.filter(item => {
+    if (STATE.purchaseBranch !== 'all' && item.branch !== STATE.purchaseBranch) return false;
+    if (STATE.purchaseMonth !== 'all' && item.purchaseMonth !== STATE.purchaseMonth) return false;
+    return true;
+  });
+
+  const totalAmt = sum(filtered, i => i.amount);
+  const totalCount = filtered.length;
+
+  container.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="k">采购合同总金额</div><div class="v">¥${fW(totalAmt)}</div><div class="n">人民币采购总货值</div></div>
+      <div class="kpi"><div class="k">采购合同总数量</div><div class="v">${totalCount}</div><div class="n">生效执行采购单数</div></div>
+      <div class="kpi"><div class="k">结算方式种类</div><div class="v">${new Set(filtered.map(i => i.settlement)).size}</div><div class="n">付款条件分布</div></div>
+    </div>
+    
+    <div class="grid2">
+      <!-- 图表1：结算方式占比 (按采购金额) -->
+      <div class="card">
+        <div class="card-head"><div><h3>结算方式占比 (按采购金额)</h3><div class="sub">100-Tick Donut · 采购资金沉淀方式分布</div></div></div>
+        <svg id="c_pur_amt" viewBox="0 0 540 280"></svg>
+        <div class="src">TICK DONUT · 采购金额结构</div>
+      </div>
+
+      <!-- 图表2：结算方式占比 (按合同数量) -->
+      <div class="card">
+        <div class="card-head"><div><h3>结算方式占比 (按合同数量)</h3><div class="sub">100-Tick Donut · 采购合同单据量分布</div></div></div>
+        <svg id="c_pur_cnt" viewBox="0 0 540 280"></svg>
+        <div class="src">TICK DONUT · 合同单据结构</div>
+      </div>
+    </div>`;
+
+  const P = T();
+
+  function renderPurDonut(svgId, valFn, isRmb) {
+    const s = document.getElementById(svgId);
+    const grp = [...groupBy(filtered, 'settlement')].map(([setl, rs]) => ({
+      name: setl, val: valFn(rs)
+    })).sort((a, b) => b.val - a.val);
+
+    const top4 = grp.slice(0, 4);
+    const otherVal = sum(grp.slice(4), i => i.val);
+    const rows = [...top4];
+    if (otherVal > 0) rows.push({ name: '其他结算方式', val: otherVal });
+
+    const tot = sum(rows, i => i.val) || 1;
+    let curT = 0;
+    const gTicks = rows.map((g, idx) => {
+      const ticks = idx === rows.length - 1 ? (100 - curT) : Math.round((g.val / tot) * 100);
+      const st = curT; curT += ticks;
+      return { name: g.name, val: g.val, pct: g.val / tot * 100, ticks, st, color: P.CAT5[idx % P.CAT5.length] };
+    });
+
+    const cx = 130, cy = 130, rIn = 58, rOut = 78;
+    for (let t = 0; t < 100; t++) {
+      const deg = -90 + t * 3.6;
+      const grpItem = gTicks.find(g => t >= g.st && t < g.st + g.ticks) || gTicks[gTicks.length - 1];
+      const [x1, y1] = pol(cx, cy, rIn, deg);
+      const [x2, y2] = pol(cx, cy, rOut, deg);
+      el(s, 'line', { x1, y1, x2, y2, stroke: grpItem ? grpItem.color : P.FAINTDATA, 'stroke-width': 1.6 });
+    }
+    txt(s, { x: cx, y: cy + 4, 'font-size': 11, 'font-weight': 800, fill: P.TXT, 'text-anchor': 'middle' }, '100 TICKS');
+
+    gTicks.forEach((g, idx) => {
+      const y = 50 + idx * 26;
+      el(s, 'rect', { x: 235, y: y - 7, width: 9, height: 9, fill: g.color, rx: 2 });
+      txt(s, { x: 250, y, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT }, g.name);
+      txt(s, { x: 500, y, 'font-size': 9.5, 'font-weight': 800, fill: P.TXT, 'text-anchor': 'end' }, (isRmb ? '¥' : '') + fW(g.val) + ` (${g.pct.toFixed(1)}%)`);
+    });
+  }
+
+  renderPurDonut('c_pur_amt', rs => sum(rs, r => r.amount), true);
+  renderPurDonut('c_pur_cnt', rs => rs.length, false);
+}
+
+/* ═══════════════ 模块 7：售后客诉与损失分析 ═══════════════ */
+function renderModule7() {
+  const container = document.getElementById('complaint-content');
+  const d = STATE.data.complaints;
+  if (!d.list.length) { container.innerHTML = `<div class="sub">无客诉记录数据</div>`; return; }
+
+  const totalLoss = d.totalLoss;
+  const totalCount = d.list.length;
+
+  container.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="k">客诉索赔总额</div><div class="v">$${fW(totalLoss)}</div><div class="n">全部涉及损失货值</div></div>
+      <div class="kpi"><div class="k">客诉记录总件数</div><div class="v">${totalCount}</div><div class="n">涉及客诉争议单数</div></div>
+      <div class="kpi"><div class="k">主要涉及客户数</div><div class="v">${d.customers.length}</div><div class="n">发生索赔争议客户</div></div>
+    </div>
+    
+    <div class="grid2">
+      <!-- 图表1：客户视角：客诉原因分布 (堆叠条形图) -->
+      <div class="card">
+        <div class="card-head"><div><h3>客户视角：客诉原因分布</h3><div class="sub">按客户汇总客诉原因 (${STATE.complaintMetric === 'Loss' ? '损失金额 USD' : '投诉件数'})</div></div></div>
+        <svg id="c_comp_cust" viewBox="0 0 540 320"></svg>
+        <div class="src">STACKED ROWS · 客户客诉原因结构</div>
+      </div>
+
+      <!-- 图表2：客诉原因视角：涉及客户分布 (堆叠条形图) -->
+      <div class="card">
+        <div class="card-head"><div><h3>客诉原因视角：涉及客户分布</h3><div class="sub">按问题原因拆解波及的客户 (${STATE.complaintMetric === 'Loss' ? '损失金额 USD' : '投诉件数'})</div></div></div>
+        <svg id="c_comp_reason" viewBox="0 0 540 320"></svg>
+        <div class="src">STACKED ROWS · 原因归因与波及面</div>
+      </div>
+    </div>`;
+
+  const P = T();
+
+  // 1. 客户视角堆叠图
+  const sCust = document.getElementById('c_comp_cust');
+  const custSummary = d.customers.map(c => {
+    const rs = d.list.filter(i => i.customer === c);
+    const val = STATE.complaintMetric === 'Loss' ? sum(rs, r => r.loss) : rs.length;
+    return { c, val, rs };
+  }).sort((a, b) => b.val - a.val).slice(0, 8);
+
+  const maxCust = custSummary.length ? Math.max(...custSummary.map(i => i.val), 1) : 1;
+  const reasons = d.reasons;
+  custSummary.forEach((it, idx) => {
+    const y = 30 + idx * 32;
+    txt(sCust, { x: 110, y: y + 4, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'end' }, it.c);
+    let startX = 120;
+    reasons.forEach((r, rIdx) => {
+      const match = it.rs.filter(i => i.reason === r);
+      const val = STATE.complaintMetric === 'Loss' ? sum(match, i => i.loss) : match.length;
+      if (val > 0) {
+        const w = (val / maxCust) * 310;
+        const color = P.CAT5[rIdx % P.CAT5.length];
+        el(sCust, 'rect', { x: startX, y: y - 7, width: w, height: 14, fill: color, rx: 1 });
+        startX += w;
+      }
+    });
+    txt(sCust, { x: startX + 8, y: y + 4, 'font-size': 9, 'font-weight': 700, fill: P.TXT }, (STATE.complaintMetric === 'Loss' ? '$' : '') + fW(it.val));
+  });
+
+  // 2. 原因视角堆叠图
+  const sReason = document.getElementById('c_comp_reason');
+  const reasonSummary = reasons.map(r => {
+    const rs = d.list.filter(i => i.reason === r);
+    const val = STATE.complaintMetric === 'Loss' ? sum(rs, r => r.loss) : rs.length;
+    return { r, val, rs };
+  }).sort((a, b) => b.val - a.val);
+
+  const maxReason = reasonSummary.length ? Math.max(...reasonSummary.map(i => i.val), 1) : 1;
+  reasonSummary.forEach((it, idx) => {
+    const y = 30 + idx * 32;
+    txt(sReason, { x: 110, y: y + 4, 'font-size': 9.5, 'font-weight': 600, fill: P.TXT, 'text-anchor': 'end' }, it.r);
+    let startX = 120;
+    d.customers.forEach((c, cIdx) => {
+      const match = it.rs.filter(i => i.customer === c);
+      const val = STATE.complaintMetric === 'Loss' ? sum(match, i => i.loss) : match.length;
+      if (val > 0) {
+        const w = (val / maxReason) * 310;
+        const color = P.CAT5[cIdx % P.CAT5.length];
+        el(sReason, 'rect', { x: startX, y: y - 7, width: w, height: 14, fill: color, rx: 1 });
+        startX += w;
+      }
+    });
+    txt(sReason, { x: startX + 8, y: y + 4, 'font-size': 9, 'font-weight': 700, fill: P.TXT }, (STATE.complaintMetric === 'Loss' ? '$' : '') + fW(it.val));
+  });
+}
+
+/* ═══════════════ 自测与自动引导 ═══════════════ */
+applyTheme();
+showUpload();
+
+// 支持带参数自动载入测试
+const auto = new URLSearchParams(location.search).get('auto');
+if (auto) {
+  fetch(auto).then(r => r.arrayBuffer()).then(b => {
+    const q = new URLSearchParams(location.search);
+    if (q.get('theme')) STATE.theme = q.get('theme');
+    loadWorkbook(new Uint8Array(b));
+    let ch = false;
+    if (q.get('dim')) { STATE.dim = q.get('dim'); ch = true; }
+    if (q.get('period')) { STATE.period = q.get('period'); ch = true; }
+    if (q.get('item')) { STATE.item = q.get('item'); ch = true; }
+    if (ch) { STATE.animate = false; renderApp(); }
+  }).catch(e => console.error(e));
+}
+</script>
+</body>
+</html>
